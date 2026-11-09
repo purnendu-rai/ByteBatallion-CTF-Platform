@@ -15,9 +15,7 @@
 <p align="center">
   <a href="#overview">Overview</a> •
   <a href="#core-features">Features</a> •
-  <a href="#ui-and-platform-experience">UI Showcase</a> •
   <a href="#anti-cheat-dynamic-flag-engine">Dynamic Flags</a> •
-  <a href="#security-architecture">Security</a> •
   <a href="#quickstart">Quickstart</a> •
   <a href="#docker-deployment">Docker</a> •
   <a href="#admin-cli">Admin CLI</a>
