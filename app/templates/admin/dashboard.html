@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Dashboard{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Dashboard</h1>
+  <div class="stat-cards">
+    <div class="stat-card"><span class="stat">{{ stats.users }}</span><span class="stat-label">users</span></div>
+    <div class="stat-card"><span class="stat">{{ stats.challenges }}</span><span class="stat-label">challenges</span></div>
+    <div class="stat-card"><span class="stat">{{ stats.solves }}</span><span class="stat-label">solves</span></div>
+    <div class="stat-card"><span class="stat">{{ stats.submissions }}</span><span class="stat-label">submissions</span></div>
+  </div>
+
+  <h2>Solves per day (last 14 days)</h2>
+  {% if stats.solves == 0 %}
+    <p class="muted">No solves yet — the chart fills in as players solve challenges.</p>
+  {% else %}
+  <div class="chart">
+    {% for d in days %}
+      <div class="chart-bar-wrap" title="{{ d.label }}: {{ d.count }}">
+        <div class="chart-bar" style="height: {{ d.pct }}%"></div>
+        <div class="chart-label">{{ d.label }}</div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <h2>Recent submissions</h2>
+  <table class="table">
+    <thead><tr><th>Time (UTC)</th><th>User</th><th>Challenge</th><th>Result</th></tr></thead>
+    <tbody>
+    {% for s, username, title in recent %}
+      <tr>
+        <td>{{ s.submitted_at.strftime("%d %b %H:%M") }}</td>
+        <td>{{ username }}</td>
+        <td>{{ title }}</td>
+        <td>{% if s.is_correct %}<span class="badge badge-ok">correct</span>{% else %}<span class="badge">incorrect</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No submissions yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

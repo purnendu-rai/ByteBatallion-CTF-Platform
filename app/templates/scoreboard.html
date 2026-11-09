@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Scoreboard — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<section class="admin-section scoreboard-container">
+  <div class="scoreboard-header-banner">
+    <div class="terminal-tag">// LIVE SCORE FEED</div>
+    <h1 class="page-title cyber-title">[02] // Scoreboard</h1>
+    <p class="tagline">Live rankings and score progression across teams and players.</p>
+  </div>
+
+  {% if teams_mode %}
+    <div class="view-tabs cyber-tabs">
+      <a class="{{ 'active' if view == 'teams' }}" href="/scoreboard?view=teams">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Teams
+      </a>
+      <a class="{{ 'active' if view == 'players' }}" href="/scoreboard?view=players">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="tab-icon"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Players
+      </a>
+    </div>
+  {% endif %}
+
+  {% if not can_view %}
+    <div class="cyber-card empty-scoreboard-card">
+      <p class="muted">The scoreboard is hidden right now. Check back later!</p>
+    </div>
+  {% else %}
+    {% if not visible %}<p class="hint-text admin-notice-text">Hidden from players &mdash; you are viewing it as an admin.</p>{% endif %}
+
+    <!-- Score progression graph (Top 10) for both teams and players! -->
+    <div class="score-graph-box cyber-card">
+      <div class="score-graph-head">
+        <div class="score-graph-title-group">
+          <span class="live-dot" title="Live Timeline"></span>
+          <h2>{% if show_teams %}Top 10 Teams{% else %}Top 10 Players{% endif %}</h2>
+          <span class="hint-text live-sync-text">auto-syncs every 10s</span>
+        </div>
+        <div class="score-graph-tools">
+          <button type="button" id="graph-zoom-in" title="Zoom In" class="graph-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button type="button" id="graph-zoom-out" title="Zoom Out" class="graph-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button type="button" id="graph-reset" title="Reset View" class="graph-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+          </button>
+          <button type="button" id="graph-download" title="Export SVG" class="graph-tool-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Range Slider / Brush Bar at the top (matching CTFd Screenshot 3 & 5!) -->
+      <div class="graph-brush-container">
+        <div class="graph-brush-bar" id="graph-brush-bar">
+          <div class="brush-selection" id="brush-selection">
+            <div class="brush-handle handle-left"></div>
+            <div class="brush-handle handle-right"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="score-graph-viewport">
+        <svg id="score-graph" data-src="/scoreboard/top10.json{% if show_teams %}?mode=teams{% else %}?mode=players{% endif %}" role="img"
+             aria-label="Score progression graph"></svg>
+        <div id="score-graph-tooltip" class="cyber-tooltip"></div>
+      </div>
+      <div id="score-graph-legend" class="graph-legend"></div>
+    </div>
+
+    <!-- Leaderboard Table -->
+    {% if show_teams %}
+      <div class="table-responsive cyber-card table-card">
+        <table class="table cyber-table">
+          <thead>
+            <tr><th>Rank</th><th>Team</th><th>Members</th><th>Points</th><th>Solved</th></tr>
+          </thead>
+          <tbody>
+          {% for r in team_rows %}
+            <tr class="{% if loop.index == 1 %}rank-gold{% elif loop.index == 2 %}rank-silver{% elif loop.index == 3 %}rank-bronze{% endif %}">
+              <td>#{{ loop.index }}</td>
+              <td>{{ r.team.name }}</td>
+              <td>{{ r.member_count }}/4</td>
+              <td>{{ r.points }}</td>
+              <td>{{ r.solves }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="muted">No teams yet — create one under Teams.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="hint-text">A challenge solved by any team member counts once for the team.</p>
+    {% else %}
+      <div class="table-responsive cyber-card table-card">
+        <table class="table cyber-table">
+          <thead>
+            <tr><th>Rank</th><th>Player</th><th>Points</th><th>Solves</th></tr>
+          </thead>
+          <tbody>
+          {% for r in rows %}
+            <tr class="{{ 'row-me' if r.username == request.state.user.username }} {% if loop.index == 1 %}rank-gold{% elif loop.index == 2 %}rank-silver{% elif loop.index == 3 %}rank-bronze{% endif %}">
+              <td>#{{ loop.index }}</td>
+              <td>{{ r.username }}</td>
+              <td>{{ r.points }}</td>
+              <td>{{ r.solve_count }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="muted">No scores yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  {% endif %}
+</section>
+<script src="/static/js/scoreboard.js"></script>
+{% endblock %}

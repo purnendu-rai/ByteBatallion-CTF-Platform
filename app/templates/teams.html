@@ -1,0 +1,68 @@
+<!-- Player team page — Phase 6 (only reachable with teams_mode ON) -->
+{% extends "base.html" %}
+{% block title %}Teams — {{ request.state.cfg.name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">[06] // Teams</h1>
+
+{% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+
+{% if team %}
+  <section class="card">
+    <h2>{{ team.name }}</h2>
+    <p class="muted">Fully built: {{ members|length }}/4 members</p>
+    <div class="admin-file-box">
+      <h3>Join code</h3>
+      <p><code>{{ team.invite_code }}</code></p>
+      <p class="hint-text">Share this code with your teammates so they can join.</p>
+    </div>
+    <h3>Members</h3>
+    <ul class="files">
+      {% for uid, username, joined in members %}
+        <li>{{ username }}{% if uid == team.captain_id %} <span class="badge badge-ok">captain</span>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/teams/leave" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <button type="submit" class="btn btn-danger">Leave team</button>
+    </form>
+  </section>
+{% else %}
+  <section class="card admin-form-card">
+    <h2>Create a team</h2>
+    <form method="post" action="/teams/create">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <label>Team name
+        <input type="text" name="name" required maxlength="64">
+      </label>
+      <button type="submit" class="btn">Create</button>
+    </form>
+  </section>
+  <section class="card admin-form-card">
+    <h2>Join a team</h2>
+    <form method="post" action="/teams/join" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="text" name="code" placeholder="8-character join code" required maxlength="8">
+      <button type="submit" class="btn">Join</button>
+    </form>
+  </section>
+{% endif %}
+
+<h2 class="cat-title">All teams</h2>
+<table class="table">
+  <thead>
+    <tr><th>Team</th><th>Members</th><th>Points</th><th>Solved</th></tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr>
+      <td>{{ r.team.name }}</td>
+      <td>{{ r.member_count }}/4</td>
+      <td>{{ r.points }}</td>
+      <td>{{ r.solves }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" class="muted">No teams yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}{{ challenge.title }} — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<a class="back-link" href="/challenges">[&lt;] BACK TO CHALLENGES</a>
+<section class="card detail-card">
+  <div class="detail-head">
+    <h1>{{ challenge.title }}</h1>
+    <div class="detail-meta">
+      <span class="badge">{{ challenge.category }}</span>
+      <span class="pts">{{ challenge.points }} points</span>
+      <span class="muted">{{ solve_count }} solves</span>
+      {% if has_solved %}<span class="badge badge-ok">solved</span>{% endif %}
+      {% if not challenge.is_published %}<span class="badge badge-warn">draft — admins only</span>{% endif %}
+      {% if is_admin %}<a class="btn btn-small" href="/admin/challenges/{{ challenge.id }}/edit">Edit</a>{% endif %}
+    </div>
+  </div>
+  <div class="detail-desc">{{ challenge.description }}</div>
+
+  {% if hints %}
+    <h2 id="hints">Hints</h2>
+    <ul class="hints">
+      {% for h in hints %}
+        <li class="hint-item">
+          {% if h.unlocked %}
+            <div class="hint-open" style="margin-bottom:0"><span class="badge">hint {{ h.index + 1 }}</span> {{ h.text }}</div>
+          {% elif h.cost > 0 %}
+            <form method="post" action="/challenges/{{ challenge.id }}/hints/{{ h.index }}/view" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small">
+                Unlock hint {{ h.index + 1 }} &mdash; costs {{ h.cost }} {{ 'point' if h.cost == 1 else 'points' }}
+              </button>
+            </form>
+            <p class="hint-text">Charged exactly once, on first view. Your score never drops below 0.</p>
+          {% else %}
+            <form method="post" action="/challenges/{{ challenge.id }}/hints/{{ h.index }}/view" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small">Show hint {{ h.index + 1 }} (free)</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <h2>Files</h2>
+  {% if has_files %}
+    <ul class="files">
+      {% for f in files %}
+        <li><a class="btn btn-small" href="/challenges/{{ challenge.id }}/download/{{ f }}">{{ f }}</a></li>
+      {% endfor %}
+    </ul>
+    <p class="hint-text">Download the challenge files, find the flag, and submit it below.</p>
+  {% else %}
+    <p class="muted">This challenge has no files — read the description above to find the flag.</p>
+  {% endif %}
+
+  <div class="submit-box">
+    <h2>Submit flag</h2>
+    {% if result == "correct" %}
+      <p class="ok-msg">Correct! +{{ challenge.points }} points.</p>
+    {% elif result == "already" %}
+      <p class="ok-msg">Correct — but you had already solved this one. No extra points.</p>
+    {% elif result == "staff" %}
+      <p class="ok-msg">Correct — staff solves are not scored.</p>
+    {% elif result == "incorrect" %}
+      <ul class="errors" style="margin-bottom:0"><li>Incorrect.</li></ul>
+    {% elif result == "ratelimited" %}
+      <ul class="errors" style="margin-bottom:0"><li>Too many submissions — wait a few seconds and try again.</li></ul>
+    {% elif result == "notstarted" %}
+      <ul class="errors" style="margin-bottom:0"><li>The CTF has not started yet.</li></ul>
+    {% elif result == "ended" %}
+      <ul class="errors" style="margin-bottom:0"><li>The CTF has ended — submissions are closed.</li></ul>
+    {% endif %}
+    <form method="post" action="/submit/{{ challenge.id }}">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="text" name="flag" placeholder="BB{...}" required maxlength="256">
+      <button type="submit">Submit</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

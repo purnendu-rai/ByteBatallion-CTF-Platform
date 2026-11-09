@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+{% block content %}
+{# Green smoke background (v2.7): fixed layer behind all page content,
+   pointer-events none, very low opacity — pure atmosphere. #}
+<div class="smoke-layer" aria-hidden="true"><span class="smoke smoke-a"></span><span class="smoke smoke-b"></span><span class="smoke smoke-c"></span><span class="smoke smoke-d"></span></div>
+{# Boot / initializing overlay (v2.2): hidden by default so a JS failure can
+   never block the page. home.js unhides it, prints the boot lines, then
+   removes it from the DOM. Shown once per browser session only. #}
+<div id="boot-overlay" role="status" aria-busy="true" aria-label="Initializing ByteBatallion" hidden>
+  <div class="boot-box">
+    <div class="boot-lines" id="boot-lines"></div>
+    <div class="boot-progress" id="boot-progress"></div>
+    <div class="boot-granted" id="boot-granted"></div>
+  </div>
+</div>
+
+<section class="hero">
+  {# v2.3: hero types BYTE_BATALLION only (v2.2's full-name typing reverted
+     at the user's request). home.js types the aria-label, so the typed
+     text and the static/no-JS text always match. The "// no shortcuts"
+     tagline was removed in v2.3. #}
+  <h1 id="hero-title" aria-label="{{ cfg.name | replace('_CTF_PLATFORM', '') }}">{{ cfg.name | replace('_CTF_PLATFORM', '') }}</h1>
+  <p class="hero-prompt hero-reveal">./bytebatallion --capture-the-flag</p>
+  <p class="tagline hero-reveal">&gt; Be smart enough to get the flag.</p>
+  {% if cfg.phase == "before" %}
+    <p class="notice hero-reveal">Starts in <span class="countdown" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start.strftime("%d %b %Y %H:%M UTC") }}</span></p>
+  {% elif cfg.phase == "ended" %}
+    <p class="notice hero-reveal">This CTF has ended. Thanks for playing!</p>
+  {% endif %}
+
+  <div class="terminal hero-reveal" id="terminal" tabindex="0" data-username="{{ username }}" data-logged-in="{{ 'true' if request.state.user else 'false' }}">
+    {# Window chrome (v2.3): makes the terminal read as a real window —
+       square buttons + title, like a desktop terminal emulator. #}
+    <div class="terminal-chrome" aria-hidden="true">
+      <span class="term-btn"></span><span class="term-btn"></span><span class="term-btn"></span>
+      <span class="terminal-title">guest@bytebatallion: ~/terminal</span>
+      <span class="terminal-shell">[ bash ]</span>
+    </div>
+    <div class="terminal-output" id="terminal-output"></div>
+    <div class="terminal-line">
+      <span class="terminal-prompt" id="terminal-prompt">guest@bytebatallion:~$</span>
+      <span class="terminal-input-text" id="terminal-input-text"></span><span class="term-cursor">&#9608;</span>
+    </div>
+    <input type="text" class="terminal-hidden-input" id="terminal-input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Terminal input">
+  </div>
+  <script src="{{ url_for('static', path='/js/terminal.js') }}" defer></script>
+  <script src="{{ url_for('static', path='/js/home.js') }}" defer></script>
+</section>
+
+{# THE BATALLION (v2.5, expanded to 12 cards in v2.6): story section
+   below the terminal. Original ByteBatallion lore + twelve operator
+   cards. Structure inspired by the DeadFace "Actors" page (intro
+   story, then one card per character) — all story text and characters
+   are original, nothing copied.
+   Cards flip automatically on hover and flip back when the cursor
+   moves away (front: portrait/handle/role; back: dossier); keyboard
+   focus flips them too, and on touch devices a tap toggles the flip
+   (story.js). story.js reveals the section on scroll, in the same
+   entrance language as the hero (hidden only once JS adds a class, so
+   no-JS still reads everything). #}
+<section class="battalion" id="battalion" aria-label="The Batallion">
+  <h2 class="battalion-title battalion-reveal"><span class="battalion-name">THE BATALLION</span></h2>
+  <p class="battalion-tagline battalion-reveal">&gt; Twelve operators. One standing operation.</p>
+
+  <p class="battalion-story battalion-reveal">Every scoreboard has the same names at the top. In 2026, four operators who kept meeting on those boards stopped competing with each other and started running operations together — that is how the Batallion was born.</p>
+  <p class="battalion-story battalion-reveal">A Batallion operation is simple: a target, a scope, and a flag. Every player gets their own flag — no two soldiers carry the same orders, so no shortcut ever works. Solve it yourself, or don't solve it at all.</p>
+  <p class="battalion-story battalion-reveal">The Batallion doesn't recruit. It watches the board. Climb it, and the next operation will find you.</p>
+
+  <div class="battalion-grid">
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="HACKERP, Commander. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/hackerp.png') }}" alt="HACKERP — Commander portrait" loading="lazy">
+          <span class="flip-handle">HACKERP</span>
+          <span class="flip-role">Commander</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Commander</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Full-spectrum operations, Strategy</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> Critical</span>
+          <span class="flip-bio">Founded the Batallion after one too many solo finals. Writes the operations, sets the scope, and takes the hardest target for himself.</span>
+          <span class="flip-sig">&gt; First Bloods: 27</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="C1PH3R, Cryptography. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/c1ph3r.png') }}" alt="C1PH3R — Cryptography portrait" loading="lazy">
+          <span class="flip-handle">C1PH3R</span>
+          <span class="flip-role">Cryptography</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Cryptography</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Cryptography, Reverse Engineering</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Sees ciphers the way other people see faces. If it was encrypted by a human, she has already read it twice.</span>
+          <span class="flip-sig">&gt; Ciphers broken: 41</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="GH0ST, Forensics and OSINT. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/gh0st.png') }}" alt="GH0ST — Forensics and OSINT portrait" loading="lazy">
+          <span class="flip-handle">GH0ST</span>
+          <span class="flip-role">Forensics &amp; OSINT</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Forensics &amp; OSINT</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Forensics, OSINT, Traffic Analysis</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Reconstructs whole operations from packet captures and deleted files. Nothing on the wire stays buried.</span>
+          <span class="flip-sig">&gt; Cases reconstructed: 33</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="V01D, Web and Pwn. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/v01d.png') }}" alt="V01D — Web and Pwn portrait" loading="lazy">
+          <span class="flip-handle">V01D</span>
+          <span class="flip-role">Web &amp; Pwn</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Web &amp; Pwn</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Web Exploitation, Pwn</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Lives in request handlers and heap sprays. If a web app has a door, he has already walked through it — twice.</span>
+          <span class="flip-sig">&gt; Shells popped: 58</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="R4ZOR, Malware Developer. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/r4zor.png') }}" alt="R4ZOR — Malware Developer portrait" loading="lazy">
+          <span class="flip-handle">R4ZOR</span>
+          <span class="flip-role">Malware Developer</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Malware Developer</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Malware, Payloads</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Builds payloads that antivirus vendors study for months. Every sample he ships teaches the industry something new — usually too late.</span>
+          <span class="flip-sig">&gt; Payloads shipped: 64</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="S1REN, Social Engineer. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/s1ren.png') }}" alt="S1REN — Social Engineer portrait" loading="lazy">
+          <span class="flip-handle">S1REN</span>
+          <span class="flip-role">Social Engineer</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Social Engineer</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Social Engineering, Pretexting</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Never touches a keyboard to break in. One phone call, one borrowed badge, one open door — that is all she ever needs.</span>
+          <span class="flip-sig">&gt; Doors opened: 89</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="N3TRUNN3R, Network Infiltrator. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/n3trunn3r.png') }}" alt="N3TRUNN3R — Network Infiltrator portrait" loading="lazy">
+          <span class="flip-handle">N3TRUNN3R</span>
+          <span class="flip-role">Network Infiltrator</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Network Infiltrator</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Network Infiltration, Pivoting</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Lives inside other people's networks for months. By the time the logs show him, he has already been gone for weeks.</span>
+          <span class="flip-sig">&gt; Networks owned: 52</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="B1NARY, Reverse Engineer. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/b1nary.png') }}" alt="B1NARY — Reverse Engineer portrait" loading="lazy">
+          <span class="flip-handle">B1NARY</span>
+          <span class="flip-role">Reverse Engineer</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Reverse Engineer</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Reverse Engineering, Binary Exploitation</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> Critical</span>
+          <span class="flip-bio">Reads machine code like bedtime stories. If a binary has a flaw, he finds it before the vendor finishes the changelog.</span>
+          <span class="flip-sig">&gt; Binaries reversed: 73</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="V3N0M, Database Hunter. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/v3n0m.png') }}" alt="V3N0M — Database Hunter portrait" loading="lazy">
+          <span class="flip-handle">V3N0M</span>
+          <span class="flip-role">Database Hunter</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Database Hunter</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> SQL Injection, Data Exfiltration</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> High</span>
+          <span class="flip-bio">Asks databases questions they were never meant to answer. One quote character is all it takes.</span>
+          <span class="flip-sig">&gt; Databases drained: 47</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="SH4D0W, Steganographer. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/sh4d0w.png') }}" alt="SH4D0W — Steganographer portrait" loading="lazy">
+          <span class="flip-handle">SH4D0W</span>
+          <span class="flip-role">Steganographer</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Steganographer</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Steganography, Covert Channels</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> Medium</span>
+          <span class="flip-bio">Hides whole operations inside cat pictures and song files. The evidence is always in plain sight — and always invisible.</span>
+          <span class="flip-sig">&gt; Messages hidden: 128</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="F0RG3, Hardware Hacker. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/f0rg3.png') }}" alt="F0RG3 — Hardware Hacker portrait" loading="lazy">
+          <span class="flip-handle">F0RG3</span>
+          <span class="flip-role">Hardware Hacker</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Hardware Hacker</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Hardware Hacking, Firmware</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> Medium</span>
+          <span class="flip-bio">Opens devices other people throw away and finds the keys still inside. If it has a chip, it has a secret.</span>
+          <span class="flip-sig">&gt; Devices cracked: 36</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="flip-card battalion-reveal">
+      <button type="button" class="flip-card-inner" aria-pressed="false" aria-label="Z3R0D4Y, Zero-day Hunter. Activate to flip the card and read the dossier.">
+        <span class="flip-face flip-front">
+          <img src="{{ url_for('static', path='/img/characters/z3r0d4y.png') }}" alt="Z3R0D4Y — Zero-day Hunter portrait" loading="lazy">
+          <span class="flip-handle">Z3R0D4Y</span>
+          <span class="flip-role">Zero-day Hunter</span>
+          <span class="flip-hint">[ HOVER / TAP TO REVEAL ]</span>
+        </span>
+        <span class="flip-face flip-back">
+          <span class="flip-row"><span class="flip-label">Role</span> Zero-day Hunter</span>
+          <span class="flip-row"><span class="flip-label">Specialty</span> Zero-days, Vulnerability Research</span>
+          <span class="flip-row"><span class="flip-label">Threat Level</span> Critical</span>
+          <span class="flip-bio">Finds the bugs nobody else can see and sells them to the highest bidder — or keeps them for the Batallion.</span>
+          <span class="flip-sig">&gt; Zero-days found: 19</span>
+          <span class="flip-hint">[x] BACK</span>
+        </span>
+      </button>
+    </div>
+  </div>
+  {# Social links (v2.8): small green-neon icons, side by side, under the cards. #}
+  <div class="battalion-social battalion-reveal">
+    <span class="social-label">[ FOLLOW THE BATALLION ]</span>
+    <a class="social-link" href="https://www.instagram.com/byte__battalion" target="_blank" rel="noopener" aria-label="ByteBatallion on Instagram">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="19" height="19" rx="5.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.4" cy="6.6" r="0.6" fill="currentColor" stroke="none"/></svg>
+    </a>
+    <a class="social-link" href="https://www.linkedin.com/company/byte-battalion/" target="_blank" rel="noopener" aria-label="ByteBatallion on LinkedIn">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z"/></svg>
+    </a>
+  </div>
+  <script src="{{ url_for('static', path='/js/story.js') }}" defer></script>
+</section>
+{% endblock %}

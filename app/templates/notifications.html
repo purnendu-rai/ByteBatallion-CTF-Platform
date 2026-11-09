@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Notifications — {{ request.state.cfg.name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">[07] // Notifications</h1>
+
+{% if announcements %}
+  {% for a in announcements %}
+    <div class="announcement">
+      <h3>{{ a.title }}</h3>
+      <p>{{ a.body }}</p>
+      <span class="muted">{{ a.created_at.strftime("%d %b %Y %H:%M") }} UTC</span>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="muted">No notifications yet.</p>
+{% endif %}
+{% endblock %}

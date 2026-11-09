@@ -1,0 +1,68 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Users{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Users</h1>
+  {% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+  {% if new_password %}
+    <div class="pw-reveal">New password for {{ new_password_for }}: <code>{{ new_password }}</code> — shown ONCE, copy it now.</div>
+  {% endif %}
+  <form method="get" action="/admin/users" class="filters">
+    <label>Search (username or email)
+      <input type="text" name="q" value="{{ q }}">
+    </label>
+    <button type="submit" class="btn btn-small">Search</button>
+  </form>
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>User</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.id }}</td>
+        <td>{{ u.username }}<br><span class="muted">{{ u.email }}</span></td>
+        <td>
+          {% if u.id == request.state.user.id %}
+            <span class="badge badge-ok">{{ u.role }}</span>
+          {% else %}
+            <form method="post" action="/admin/users/{{ u.id }}/role" class="inline-form role-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <select name="role">
+                {% for r in ["player", "author", "admin"] %}
+                  <option value="{{ r }}" {{ 'selected' if u.role == r else '' }}>{{ r }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-small">Set</button>
+            </form>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.is_banned %}<span class="badge badge-danger">banned</span>
+          {% else %}<span class="badge badge-ok">active</span>{% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            {% if u.id != request.state.user.id %}
+              <form method="post" action="/admin/users/{{ u.id }}/ban" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <button type="submit" class="btn btn-small {{ 'btn-danger' if not u.is_banned }}">{{ "Unban" if u.is_banned else "Ban" }}</button>
+              </form>
+            {% endif %}
+            <form method="post" action="/admin/users/{{ u.id }}/password" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small">Reset password</button>
+            </form>
+            {# v2.8: jump straight to this user's submission log — the
+               starting point for cheating analysis. #}
+            <a class="btn btn-small" href="/admin/submissions?user={{ u.username|urlencode }}">Submissions</a>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No users found.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

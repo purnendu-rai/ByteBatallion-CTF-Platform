@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Bulk import{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Bulk import challenges</h1>
+
+  {% if errors %}
+    <ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if preview %}
+    <h2>Review — nothing is saved yet</h2>
+    <table class="table">
+      <thead><tr><th>Title</th><th>Category</th><th>Points</th><th>Flag</th></tr></thead>
+      <tbody>
+      {% for item in preview %}
+        <tr>
+          <td>{{ item.title }}</td>
+          <td>{{ item.category }}</td>
+          <td>{{ item.points }}</td>
+          <td><span class="badge badge-ok">set ✓</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="hint-text">Each challenge keeps its own flag (stored as a SHA-256 hash). Imported challenges start as DRAFTS — review and publish them from the challenges list.</p>
+    <form method="post" action="/admin/challenges/import/confirm" class="admin-actions">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="hidden" name="items_json" value="{{ items_json }}">
+      <button type="submit" class="btn">Import {{ preview|length }} challenges as drafts</button>
+      <a href="/admin/challenges/import" class="muted">Cancel</a>
+    </form>
+  {% else %}
+    <div class="card admin-form-card" style="margin: 0; max-width: 720px">
+      <form method="post" action="/admin/challenges/import">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <label>Format
+          <select name="format">
+            <option value="json">JSON</option>
+            <option value="csv">CSV</option>
+          </select>
+        </label>
+        <label>Paste your challenges
+          <textarea name="payload" rows="12" placeholder='[{"title": "Warmup", "category": "misc", "points": 50, "flag": "BB{warmup_abc123def456}"}]'></textarea>
+        </label>
+        <p class="hint-text">
+          JSON: an array of objects with title, category, description (optional), points, flag.
+          CSV: one challenge per line as <code>title,category,points,flag</code>.
+          Each challenge's flag is stored as a SHA-256 hash — you review the
+          list before anything is saved.
+        </p>
+        <button type="submit" class="btn">Preview import</button>
+      </form>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

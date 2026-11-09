@@ -1,0 +1,34 @@
+# secrets — never commit (any .env variant; .env.example stays tracked)
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.venv-test/
+venv/
+
+# databases anywhere in the tree (test DBs included) + journals
+*.db
+*.db-journal
+
+# runtime data (uploads, generated instances) — keep dir structure only
+data/challenges/*
+data/instances/*
+!data/challenges/.gitkeep
+!data/instances/.gitkeep
+
+# local clutter & editor configs
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+.vscode/
+.idea/
+.coverage
+coverage/
+htmlcov/

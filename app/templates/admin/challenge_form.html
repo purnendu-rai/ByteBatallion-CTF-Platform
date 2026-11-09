@@ -1,0 +1,103 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ "Edit challenge" if challenge else "New challenge" }} — Admin{% endblock %}
+{% block admin_content %}
+<section class="card admin-form-card">
+  <h1>{{ "Edit challenge #" ~ challenge.id if challenge else "New challenge" }}</h1>
+  {% if errors %}
+    <ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post" action="{{ action_url }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Title
+      <input type="text" name="title" required maxlength="200" value="{{ form.title or '' }}">
+    </label>
+
+    <label>Category
+      <select name="category" id="category-select">
+        {% for cat in categories %}
+          <option value="{{ cat }}" {{ 'selected' if form.category == cat else '' }}>{{ cat }}</option>
+        {% endfor %}
+        <option value="__custom__" {{ 'selected' if form.category and form.category not in categories else '' }}>Custom category…</option>
+      </select>
+      <input type="text" name="custom_category" id="custom-category" placeholder="Type a custom category (e.g. hardware)"
+             value="{{ form.category if form.category and form.category not in categories else '' }}"
+             {% if not (form.category and form.category not in categories) %}style="display:none"{% endif %}>
+      <span class="hint-text">Pick one, or choose “Custom category…” and type your own.</span>
+    </label>
+
+    <label>Points
+      <input type="number" name="points" min="0" max="100000" value="{{ form.points or '100' }}">
+    </label>
+    <label>Description
+      <textarea name="description" rows="6">{{ form.description or '' }}</textarea>
+    </label>
+
+    <label>Flag (the exact answer a player must submit)
+      <input type="text" name="flag" placeholder="{{ 'Leave blank to keep the current flag' if has_flag else 'BB{y0u_f0und_1t}' }}"
+             value="{{ form.flag or '' }}">
+      <span class="hint-text">
+        Type the full flag, e.g. <code>BB{sup3r_s3cr3t}</code>. Only its
+        SHA-256 hash is stored — never the plaintext.{% if has_flag %} A flag is
+        already set; leave this blank to keep it.{% endif %}
+      </span>
+    </label>
+
+    <label>Hints (one per line; a paid hint ends with "| points" — e.g. "Check the query string | 25")
+      <textarea name="hints" rows="4">{{ form.hints or '' }}</textarea>
+    </label>
+
+    <label>Number of files to upload
+      <input type="number" name="file_count" id="file-count" min="0" max="20" value="{{ file_count or 1 }}">
+      <span class="hint-text">Choose how many files this challenge needs; the upload boxes appear below.</span>
+    </label>
+
+    <div id="file-inputs" class="file-inputs"></div>
+
+    <button type="submit">{{ "Save changes" if challenge else "Create challenge" }}</button>
+  </form>
+
+  {% if challenge %}
+    <div class="admin-file-box">
+      <h2>Uploaded files</h2>
+      {% if files %}
+        <ul class="files">
+          {% for f in files %}
+            <li><a href="/challenges/{{ challenge.id }}/download/{{ f }}" target="_blank"><code>{{ f }}</code></a></li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">No files uploaded.</p>
+      {% endif %}
+      <p class="hint-text">New uploads are added to this list when you save. Files are served to signed-in players only.</p>
+    </div>
+    <div class="admin-file-box">
+      <h2>Flag</h2>
+      {% if has_flag %}
+        <p><span class="badge badge-ok">set</span> A flag is configured for this challenge (stored as a hash).</p>
+        <p class="hint-text">To change it, type a new flag above and save.</p>
+      {% else %}
+        <p class="muted">No flag set yet — players cannot solve this challenge until you add one.</p>
+      {% endif %}
+    </div>
+    <div class="admin-actions">
+      <form method="post" action="/admin/challenges/{{ challenge.id }}/publish" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn">{{ "Unpublish" if challenge.is_published else "Publish" }}</button>
+      </form>
+      <form method="post" action="/admin/challenges/{{ challenge.id }}/delete" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+      {% if challenge.is_published %}<a class="btn" href="/challenges/{{ challenge.id }}">View on board</a>{% endif %}
+      <a href="/admin/challenges" class="muted">Back to list</a>
+    </div>
+  {% endif %}
+</section>
+
+{# Form helpers live in a static file (not an inline <script>) so the
+   Content-Security-Policy can forbid inline scripts — see SECURITY.md.
+   It must stay INSIDE the content block: base.html has no separate
+   scripts block, and anything outside a block never renders. #}
+<script src="{{ url_for('static', path='/js/admin_challenge_form.js') }}" defer></script>
+
+{% endblock %}

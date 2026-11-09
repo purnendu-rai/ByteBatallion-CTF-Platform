@@ -1,0 +1,18 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Edit announcement{% endblock %}
+{% block admin_content %}
+<section class="card admin-form-card">
+  <h1>Edit announcement</h1>
+  <form method="post" action="/admin/announcements/{{ a.id }}/edit">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Title
+      <input type="text" name="title" required maxlength="200" value="{{ a.title }}">
+    </label>
+    <label>Body
+      <textarea name="body" rows="4" required>{{ a.body }}</textarea>
+    </label>
+    <button type="submit" class="btn">Save changes</button>
+    <a href="/admin/announcements" class="muted">Back</a>
+  </form>
+</section>
+{% endblock %}

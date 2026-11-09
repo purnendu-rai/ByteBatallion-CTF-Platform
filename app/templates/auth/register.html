@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Register — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<section class="card auth-card">
+  <h1>Create your account</h1>
+  {% if errors %}
+    <ul class="errors">
+      {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  <form method="post" action="/auth/register">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <label>Username
+      <input type="text" name="username" required minlength="3" maxlength="64" value="{{ username or '' }}">
+    </label>
+    <label>Email
+      <input type="email" name="email" required maxlength="255" value="{{ email or '' }}">
+    </label>
+    <label>Password (min 8 characters)
+      <input type="password" name="password" required minlength="8" maxlength="128">
+    </label>
+    <button type="submit">Register</button>
+  </form>
+  <p class="muted">Already have an account? <a href="/auth/login">Log in</a></p>
+</section>
+{% endblock %}

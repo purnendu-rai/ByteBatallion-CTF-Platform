@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Settings — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<div class="settings-container">
+  <div class="settings-header">
+    <div class="terminal-tag">// USER_PREFERENCES &amp; SECURITY</div>
+    <h1 class="page-title cyber-title">[05] // Account Settings</h1>
+    <p class="tagline">Configure your credentials and security settings.</p>
+  </div>
+
+  <div class="settings-grid">
+    <!-- User Info Card -->
+    <div class="cyber-card user-summary-card">
+      <div class="cyber-card-glitch-border"></div>
+      <div class="card-inner">
+        <div class="card-header-line">
+          <span class="cyber-dot"></span>
+          <h2>Identity Details</h2>
+        </div>
+        <div class="user-id-badge">
+          <div class="user-avatar-circle">
+            {{ user.username[:2]|upper }}
+          </div>
+          <div class="user-meta-info">
+            <span class="user-name-title">{{ user.username }}</span>
+            <span class="user-role-pill {{ 'admin-pill' if user.role == 'admin' else 'player-pill' }}">{{ user.role|upper }}</span>
+          </div>
+        </div>
+
+        <div class="account-details-list">
+          <div class="detail-row">
+            <span class="detail-key">Email Address</span>
+            <span class="detail-val">{{ user.email }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Registered On</span>
+            <span class="detail-val">{{ user.created_at.strftime("%d %b %Y, %H:%M UTC") }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-key">Account Status</span>
+            <span class="detail-val status-val-active">
+              <span class="live-status-dot"></span> Active
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Password Change Card -->
+    <div class="cyber-card password-card">
+      <div class="cyber-card-glitch-border"></div>
+      <div class="card-inner">
+        <div class="card-header-line">
+          <span class="cyber-dot"></span>
+          <h2>Change Password</h2>
+        </div>
+
+        {% if error %}
+          <div class="alert-box alert-error">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span>{{ error }}</span>
+          </div>
+        {% endif %}
+
+        {% if success %}
+          <div class="alert-box alert-success">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>{{ success }}</span>
+          </div>
+        {% endif %}
+
+        <form method="post" action="/settings/password" class="settings-form">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+          <div class="form-group">
+            <label for="current_password">
+              <span class="label-text">Current Password</span>
+              <span class="label-required">*</span>
+            </label>
+            <div class="input-wrap">
+              <input type="password" id="current_password" name="current_password" required autocomplete="current-password" placeholder="••••••••">
+              <span class="input-focus-line"></span>
+            </div>
+            <p class="field-hint">Verify your current credentials before saving updates.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="new_password">
+              <span class="label-text">New Password</span>
+              <span class="label-required">*</span>
+            </label>
+            <div class="input-wrap">
+              <input type="password" id="new_password" name="new_password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="At least 8 characters">
+              <span class="input-focus-line"></span>
+            </div>
+            <p class="field-hint">Must be at least 8 characters long.</p>
+          </div>
+
+          <div class="form-group">
+            <label for="confirm_password">
+              <span class="label-text">Confirm New Password</span>
+              <span class="label-required">*</span>
+            </label>
+            <div class="input-wrap">
+              <input type="password" id="confirm_password" name="confirm_password" required minlength="8" maxlength="128" autocomplete="new-password" placeholder="Repeat new password">
+              <span class="input-focus-line"></span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="cyber-btn primary-btn">
+              <span class="btn-glow"></span>
+              <span class="btn-label">Update Password</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

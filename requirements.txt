@@ -1,0 +1,24 @@
+# BYTE_BATALLION_CTF_PLATFORM dependencies — pinned (brief, Section 3)
+# v0.1 audit: fastapi/starlette/python-multipart/pytest bumped past
+# their PYSEC advisories (pip-audit clean); other pins unchanged.
+fastapi==0.162.2
+starlette==1.10.0
+pydantic==2.14.3
+anyio==4.16.0
+uvicorn[standard]==0.34.2
+SQLAlchemy==2.0.40
+jinja2==3.1.6
+pydantic-settings==2.8.1
+
+# auth (Phase 1)
+passlib==1.7.4
+bcrypt==4.0.1
+itsdangerous==2.2.0
+python-multipart==0.0.31
+
+# tests
+httpx==0.28.1
+pytest==9.0.3
+
+# admin PDF export (v2)
+reportlab==4.2.5

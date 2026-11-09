@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Log in — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<section class="card auth-card">
+  <h1>Log in</h1>
+  {% if error %}
+    <ul class="errors"><li>{{ error }}</li></ul>
+  {% endif %}
+  <form method="post" action="/auth/login">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <label>Username or email
+      <input type="text" name="username" required maxlength="255" value="{{ username or '' }}">
+    </label>
+    <label>Password
+      <input type="password" name="password" required>
+    </label>
+    <button type="submit">Log in</button>
+  </form>
+  <p class="muted">No account yet? <a href="/auth/register">Register</a></p>
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+{% set path = request.url.path %}
+<p class="terminal-tag">[04] // Admin</p>
+<div class="admin-nav">
+  <a href="/admin" class="{{ 'active' if path == '/admin' }}">Dashboard</a>
+  <a href="/admin/challenges" class="{{ 'active' if path.startswith('/admin/challenges') }}">Challenges</a>
+  <a href="/admin/users" class="{{ 'active' if path.startswith('/admin/users') }}">Users</a>
+  <a href="/admin/submissions" class="{{ 'active' if path.startswith('/admin/submissions') }}">Submissions</a>
+  <a href="/admin/cheat-log" class="{{ 'active' if path.startswith('/admin/cheat-log') }}">Cheat log</a>
+  <a href="/admin/announcements" class="{{ 'active' if path.startswith('/admin/announcements') }}">Announcements</a>
+  <a href="/admin/pages" class="{{ 'active' if path.startswith('/admin/pages') }}">Pages</a>
+  <a href="/admin/config" class="{{ 'active' if path.startswith('/admin/config') }}">Config</a>
+  <a href="/admin/export" class="{{ 'active' if path.startswith('/admin/export') }}">Export</a>
+</div>
+{% block admin_content %}{% endblock %}
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Cheat log{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Cheat log</h1>
+  <p class="hint-text">Players who submitted a flag belonging to ANOTHER user. The player was only ever told "Incorrect".</p>
+  <table class="table">
+    <thead><tr><th>Detected (UTC)</th><th>Offender</th><th>Flag owner</th><th>Challenge</th><th>Source IP</th><th>Hash</th><th>Action</th></tr></thead>
+    <tbody>
+    {% for c, off, own, title in rows %}
+      <tr>
+        <td>{{ c.detected_at.strftime("%d %b %H:%M:%S") }}</td>
+        <td>{{ off.username }}{% if off.is_banned %} <span class="badge badge-danger">banned</span>{% endif %}</td>
+        <td>{{ own.username }}</td>
+        <td>{{ title }}</td>
+        <td><code>{{ c.source_ip }}</code></td>
+        <td><code>{{ c.submitted_flag_hash[:12] }}&hellip;</code></td>
+        <td>
+          {% if not off.is_banned %}
+            <form method="post" action="/admin/users/{{ off.id }}/ban" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small btn-danger">Ban {{ off.username }}</button>
+            </form>
+          {% else %}
+            <span class="muted">&mdash;</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">No flag-sharing detected. Good.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

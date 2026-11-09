@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }} — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<p class="terminal-tag">[03] // Profile</p>
+<div class="profile-container">
+
+  <!-- Profile Hero Banner -->
+  <section class="profile-hero cyber-card">
+    <div class="profile-hero-bg">
+      <div class="profile-grid-glow"></div>
+    </div>
+    <div class="profile-hero-content">
+      <div class="profile-avatar-wrap">
+        <div class="profile-avatar-hexagon">
+          <span>{{ user.username[:2]|upper }}</span>
+        </div>
+      </div>
+
+      <div class="profile-identity">
+        <h1 class="profile-username">{{ user.username }}</h1>
+        {% if teams_mode and team_name %}
+          <div class="profile-team-pill">
+            <svg class="team-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            <span>Team: {{ team_name }}</span>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Core Stats: Points, Rank, Solves -->
+      <div class="stats profile-stats-strip">
+        <div class="stat-box">
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat">{{ points }}</span>
+            <span class="stat-label">Points</span>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.45 1-1 1H7c-.55 0-1 .45-1 1v1h12v-1c0-.55-.45-1-1-1h-2c-.55 0-1-.45-1-1v-2.34"></path><path d="M6 4h12a2 2 0 0 1 2 2v3.66a8 8 0 0 1-8 8 8 8 0 0 1-8-8V6a2 2 0 0 1 2-2z"></path></svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat">{% if rank %}#{{ rank }}{% else %}&mdash;{% endif %}</span>
+            <span class="stat-label">Rank</span>
+          </div>
+        </div>
+
+        <div class="stat-box">
+          <div class="stat-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat">{{ solve_count }}</span>
+            <span class="stat-label">Solves</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Visual Charts Section -->
+  <section class="profile-analytics-section">
+    <div class="analytics-charts-grid">
+
+      <!-- Circular Graph 1: Attempts Breakdown (Solves vs Fails) -->
+      <div class="cyber-card chart-card">
+        <div class="card-inner">
+          <div class="card-header-line">
+            <span class="cyber-dot"></span>
+            <h2>Submission Attempts</h2>
+          </div>
+          <p class="chart-subtitle">Accuracy ratio between correct flag solves and failed attempts.</p>
+
+          <div class="donut-chart-container">
+            <div class="donut-svg-wrap">
+              <svg id="attempts-donut" class="donut-chart-svg" viewBox="0 0 180 180">
+                <circle class="donut-bg-ring" cx="90" cy="90" r="70"></circle>
+                {% set c = 439.822 %}
+                {% if attempts_stats.total > 0 %}
+                  {% set solve_dash = (attempts_stats.solves_pct / 100.0) * c %}
+                  {% set fail_dash = (attempts_stats.fails_pct / 100.0) * c %}
+                  <!-- Fails Arc -->
+                  <circle class="donut-segment segment-fail" cx="90" cy="90" r="70"
+                          stroke="#ff3131" stroke-dasharray="{{ fail_dash }} {{ c - fail_dash }}"
+                          stroke-dashoffset="{{ -solve_dash }}"
+                          data-label="Fails" data-count="{{ attempts_stats.fails }}" data-pct="{{ attempts_stats.fails_pct }}%"></circle>
+                  <!-- Solves Arc -->
+                  <circle class="donut-segment segment-solve" cx="90" cy="90" r="70"
+                          stroke="#00ff41" stroke-dasharray="{{ solve_dash }} {{ c - solve_dash }}"
+                          stroke-dashoffset="0"
+                          data-label="Solves" data-count="{{ attempts_stats.correct }}" data-pct="{{ attempts_stats.solves_pct }}%"></circle>
+                {% endif %}
+              </svg>
+              <div class="donut-center-text">
+                <span class="center-metric">
+                  {% if attempts_stats.total > 0 %}{{ attempts_stats.solves_pct }}%{% else %}0%{% endif %}
+                </span>
+                <span class="center-sub">Accuracy</span>
+              </div>
+            </div>
+
+            <!-- Attempts Legend -->
+            <div class="chart-legend attempts-legend">
+              <div class="legend-item" data-type="solve">
+                <span class="legend-color-dot dot-solve"></span>
+                <span class="legend-name">Solves ({{ attempts_stats.solves_pct }}%)</span>
+                <span class="legend-count">{{ attempts_stats.correct }}</span>
+              </div>
+              <div class="legend-item" data-type="fail">
+                <span class="legend-color-dot dot-fail"></span>
+                <span class="legend-name">Fails ({{ attempts_stats.fails_pct }}%)</span>
+                <span class="legend-count">{{ attempts_stats.fails }}</span>
+              </div>
+              <div class="legend-total-row">
+                <span>Total Attempts:</span>
+                <strong>{{ attempts_stats.total }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Circular Graph 2: Categories Breakdown -->
+      <div class="cyber-card chart-card">
+        <div class="card-inner">
+          <div class="card-header-line">
+            <span class="cyber-dot"></span>
+            <h2>Category Distribution</h2>
+          </div>
+          <p class="chart-subtitle">Breakdown of solved challenges across security categories.</p>
+
+          <div class="donut-chart-container">
+            <div class="donut-svg-wrap">
+              <svg id="category-donut" class="donut-chart-svg" viewBox="0 0 180 180">
+                <circle class="donut-bg-ring" cx="90" cy="90" r="70"></circle>
+                {% if category_stats %}
+                  {% set cat_colors = ["#00ff41", "#4ade80", "#16a34a", "#15803d", "#166534", "#14532d", "#86efac", "#a3a3a3", "#d4d4d4", "#737373", "#ffb000", "#f59e0b"] %}
+                  {% set total_c = 439.822 %}
+                  {% set ns = namespace(curr_offset=0) %}
+                  {% for cat in category_stats %}
+                    {% set seg_len = (cat.pct / 100.0) * total_c %}
+                    {% set col = cat_colors[loop.index0 % cat_colors|length] %}
+                    <circle class="donut-segment cat-segment" cx="90" cy="90" r="70"
+                            stroke="{{ col }}" stroke-dasharray="{{ seg_len }} {{ total_c - seg_len }}"
+                            stroke-dashoffset="{{ -ns.curr_offset }}"
+                            data-cat="{{ cat.category }}" data-count="{{ cat.count }}" data-pct="{{ cat.pct }}%"></circle>
+                    {% set ns.curr_offset = ns.curr_offset + seg_len %}
+                  {% endfor %}
+                {% endif %}
+              </svg>
+              <div class="donut-center-text">
+                <span class="center-metric">{{ solve_count }}</span>
+                <span class="center-sub">Solved</span>
+              </div>
+            </div>
+
+            <!-- Categories Legend -->
+            <div class="chart-legend category-legend">
+              {% if category_stats %}
+                {% set cat_colors = ["#00ff41", "#4ade80", "#16a34a", "#15803d", "#166534", "#14532d", "#86efac", "#a3a3a3", "#d4d4d4", "#737373", "#ffb000", "#f59e0b"] %}
+                {% for cat in category_stats %}
+                  {% set col = cat_colors[loop.index0 % cat_colors|length] %}
+                  <div class="legend-item" data-cat="{{ cat.category }}">
+                    <span class="legend-color-dot" style="background-color: {{ col }};"></span>
+                    <span class="legend-name">{{ cat.category|capitalize }} — {{ cat.count }} ({{ cat.pct }}%)</span>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="legend-empty muted">No categories solved yet.</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- User's Score Progression Over Time Line Chart -->
+    <div class="cyber-card timeline-chart-card">
+      <div class="card-inner">
+        <div class="card-header-line">
+          <span class="cyber-dot"></span>
+          <h2>Score Over Time</h2>
+        </div>
+        <p class="chart-subtitle">Progression curve of accumulated points across the competition.</p>
+
+        <div class="profile-linechart-wrap">
+          <svg id="profile-score-chart" class="profile-score-svg" viewBox="0 0 800 240" preserveAspectRatio="none">
+            <!-- Drawn via JS -->
+          </svg>
+          <div id="profile-chart-tooltip" class="cyber-tooltip"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Solved Challenges Log Table -->
+  <section class="profile-solves-section cyber-card">
+    <div class="card-inner">
+      <div class="section-title-bar">
+        <div class="card-header-line">
+          <span class="cyber-dot"></span>
+          <h2>Solved Challenges Log</h2>
+          <span class="badge badge-accent">{{ solves_log|length }} solves</span>
+        </div>
+      </div>
+
+      {% if solves_log %}
+        <div class="table-responsive">
+          <table class="table cyber-table solves-table">
+            <thead>
+              <tr>
+                <th>Challenge</th>
+                <th>Category</th>
+                <th>Points</th>
+                <th>Solved Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in solves_log %}
+                <tr>
+                  <td class="chal-name-col">
+                    <a href="/challenges/{{ s.challenge_id }}" class="chal-link">
+                      <span class="chal-link-icon">&gt;</span>
+                      <span class="chal-link-text">{{ s.title }}</span>
+                    </a>
+                  </td>
+                  <td>
+                    <span class="badge badge-cat badge-cat-{{ s.category|lower }}">{{ s.category }}</span>
+                  </td>
+                  <td class="points-col">
+                    <span class="pts-badge">+{{ s.points }}</span>
+                  </td>
+                  <td class="time-col">
+                    <span class="time-text">{{ s.time_str }}</span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-solves-state">
+          <div class="empty-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <h3>No Solves Yet</h3>
+          <p class="muted">You haven't captured any flags yet. Head over to the challenges board to begin scoring!</p>
+          <a href="/challenges" class="cyber-btn primary-btn btn-small">Explore Challenges</a>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+</div>
+
+<!-- Data for profile charts: a JSON data block, not an executable
+     inline <script> — the Content-Security-Policy forbids inline
+     scripts, and profile_charts.js reads this block instead (see
+     SECURITY.md). -->
+<script type="application/json" id="score-history-data">{{ score_history|tojson }}</script>
+<script src="{{ url_for('static', path='/js/profile_charts.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ "Edit page" if page else "New page" }} — Admin{% endblock %}
+{% block admin_content %}
+<section class="card admin-form-card">
+  <h1>{{ "Edit page #" ~ page.id if page else "New page" }}</h1>
+  {% if errors %}
+    <ul class="errors">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  <form method="post" action="{{ '/admin/pages/' ~ (page.id ~ '/edit') if page else '/admin/pages/new' }}">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Title
+      <input type="text" name="title" required maxlength="200" value="{{ form.title or '' }}">
+    </label>
+    <label>Slug (URL part — /pages/&lt;slug&gt;)
+      <input type="text" name="slug" required maxlength="64"
+             placeholder="rules" value="{{ form.slug or '' }}">
+    </label>
+    <label>Content
+      <textarea name="content" rows="12">{{ form.content or '' }}</textarea>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="is_published" {{ 'checked' if form.is_published or not page }}>
+      Published (visible in the nav)
+    </label>
+    <button type="submit" class="btn">{{ "Save changes" if page else "Create page" }}</button>
+  </form>
+  {% if page %}<a href="/admin/pages" class="muted">Back to pages</a>{% endif %}
+</section>
+{% endblock %}

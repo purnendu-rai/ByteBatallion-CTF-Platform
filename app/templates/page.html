@@ -1,0 +1,9 @@
+<!-- Player / public page render — Phase 6 -->
+{% extends "base.html" %}
+{% block title %}{{ page.title }} — {{ request.state.cfg.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <h1 class="page-title">{{ page.title }}</h1>
+  <div class="page-body">{{ page.content }}</div>
+</section>
+{% endblock %}

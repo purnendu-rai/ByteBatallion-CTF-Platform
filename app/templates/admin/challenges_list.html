@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Challenges{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <div class="admin-head">
+    <h1>Challenges</h1>
+    <div class="actions">
+      <a class="btn" href="/admin/challenges/import">Bulk import</a>
+      <a class="btn" href="/admin/challenges/new">+ New challenge</a>
+    </div>
+  </div>
+  {% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+  <table class="table">
+    <thead>
+      <tr><th>ID</th><th>Title</th><th>Category</th><th>Points</th><th>Solves</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for c in challenges %}
+      <tr class="{{ 'row-deleted' if c.is_deleted }}">
+        <td>{{ c.id }}</td>
+        <td><a href="/admin/challenges/{{ c.id }}/edit">{{ c.title }}</a></td>
+        <td>{{ c.category }}</td>
+        <td>{{ c.points }}</td>
+        <td>{{ solve_counts.get(c.id, 0) }}</td>
+        <td>
+          {% if c.is_deleted %}<span class="badge badge-danger">deleted</span>
+          {% elif c.is_published %}<span class="badge badge-ok">published</span>
+          {% else %}<span class="badge">draft</span>{% endif %}
+        </td>
+        <td>
+          <div class="actions">
+            <form method="post" action="/admin/challenges/{{ c.id }}/publish" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small">{{ "Unpublish" if c.is_published else "Publish" }}</button>
+            </form>
+            <form method="post" action="/admin/challenges/{{ c.id }}/delete" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+              <button type="submit" class="btn btn-small btn-danger">Delete</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">No challenges yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

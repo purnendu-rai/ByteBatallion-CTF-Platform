@@ -1,0 +1,34 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Pages{% endblock %}
+{% block admin_content %}
+<section class="card">
+  <h1>Custom pages</h1>
+  {% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+  <p class="hint-text">Published pages show up as nav links for everyone (rules, FAQ, contact...).</p>
+  <table class="table">
+    <thead>
+      <tr><th>Title</th><th>Slug</th><th>Status</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    {% for p in rows %}
+      <tr>
+        <td>{{ p.title }}</td>
+        <td><code>{{ p.slug }}</code></td>
+        <td>{{ 'published' if p.is_published else 'draft' }}</td>
+        <td>
+          <a class="btn btn-small" href="/admin/pages/{{ p.id }}/edit">Edit</a>
+          {% if p.is_published %}<a class="btn btn-small" href="/pages/{{ p.slug }}">View</a>{% endif %}
+          <form method="post" action="/admin/pages/{{ p.id }}/delete" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+            <button type="submit" class="btn btn-small btn-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="muted">No pages yet.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a class="btn" href="/admin/pages/new">New page</a>
+</section>
+{% endblock %}

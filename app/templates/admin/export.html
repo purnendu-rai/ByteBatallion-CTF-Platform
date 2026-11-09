@@ -1,0 +1,17 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Export{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Export</h1>
+  <p class="muted">Download the platform data for the college record.</p>
+  <div class="admin-actions">
+    <a class="btn" href="/admin/export/challenges.json">Download challenges (JSON)</a>
+    <a class="btn" href="/admin/export/results.csv">Download results / scoreboard (CSV)</a>
+    <a class="btn" href="/admin/submissions/export.pdf">Download submission log (PDF)</a>
+  </div>
+  <p class="hint-text" style="margin-top: 16px">
+    The JSON export contains every challenge with its flag TEMPLATE (never any
+    per-user flag). The CSV contains the ranked player scoreboard with emails.
+  </p>
+</section>
+{% endblock %}

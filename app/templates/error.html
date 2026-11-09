@@ -1,0 +1,16 @@
+<!-- Generic error page — Phase 7. Never shows internals (no traces, no paths). -->
+{% extends "base.html" %}
+{% block title %}{{ status }} — {{ request.state.cfg.name }}{% endblock %}
+{% block content %}
+<section class="card error-page">
+  <h1>{{ status }}</h1>
+  {% if detail %}
+    <p class="muted">{{ detail }}</p>
+  {% elif status == 500 %}
+    <p class="muted">Something went wrong on our side. It has been logged &mdash; please try again later.</p>
+  {% else %}
+    <p class="muted">The request could not be completed.</p>
+  {% endif %}
+  <p><a class="btn" href="/challenges">Back to the board</a> <a class="btn" href="/">Home</a></p>
+</section>
+{% endblock %}

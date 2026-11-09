@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Challenges — {{ request.state.cfg.name }}{% endblock %}
+{% block content %}
+<h1 class="page-title">[01] // Challenges</h1>
+
+{% if cfg.phase == "before" %}
+  <div class="banner-warn">
+    <p style="margin: 0 0 6px">The CTF has not started yet{% if show_cards %} (players see this countdown){% endif %}.</p>
+    <p style="margin: 0" class="countdown-big" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start.strftime("%d %b %Y %H:%M UTC") }}</p>
+  </div>
+{% elif cfg.phase == "ended" %}
+  <div class="banner-warn">The CTF has ended &mdash; submissions are closed. Scores are final.</div>
+{% endif %}
+
+{% if show_cards %}
+  {% for category, items in groups %}
+    <section class="cat-section">
+      <h2 class="cat-title">{{ category }}</h2>
+      <div class="board-grid">
+        {% for item in items %}
+          <a class="chal-card{% if item.challenge.id in solved_ids %} solved{% endif %}" href="/challenges/{{ item.challenge.id }}">
+            <div class="chal-title">{{ item.challenge.title }}{% if item.challenge.id in solved_ids %} <span class="badge badge-ok">[SOLVED]</span>{% endif %}</div>
+            <div class="chal-meta">
+              <span class="badge">{{ item.challenge.category }}</span>
+              {% if first_bloods.get(item.challenge.id) %}
+                <span class="badge badge-first">first blood: {{ first_bloods[item.challenge.id] }}</span>
+              {% endif %}
+            </div>
+            <div class="chal-stats">
+              <span>{{ item.challenge.points }} pts</span>
+              <span>{{ item.solves }} solves</span>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
+  {% else %}
+    <p class="muted">No challenges published yet. Check back soon!</p>
+  {% endfor %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Announcements{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Announcements</h1>
+  {% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+
+  <div class="card admin-form-card" style="margin: 0 0 24px">
+    <h2>New announcement</h2>
+    <form method="post" action="/admin/announcements/new">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <label>Title
+        <input type="text" name="title" required maxlength="200">
+      </label>
+      <label>Body
+        <textarea name="body" rows="3" required></textarea>
+      </label>
+      <button type="submit" class="btn">Publish announcement</button>
+    </form>
+  </div>
+
+  {% for a in rows %}
+    <div class="announcement">
+      <h3>{{ a.title }}</h3>
+      <p>{{ a.body }}</p>
+      <span class="muted">{{ a.created_at.strftime("%d %b %Y %H:%M") }} UTC</span>
+      <div class="actions" style="margin-top: 8px">
+        <a class="btn btn-small" href="/admin/announcements/{{ a.id }}/edit">Edit</a>
+        <form method="post" action="/admin/announcements/{{ a.id }}/delete" class="inline-form">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <p class="muted">No announcements yet.</p>
+  {% endfor %}
+</section>
+{% endblock %}

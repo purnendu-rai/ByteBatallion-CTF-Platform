@@ -1,0 +1,67 @@
+{% extends "admin/base.html" %}
+{% block title %}Admin — Submissions{% endblock %}
+{% block admin_content %}
+<section class="admin-section">
+  <h1 class="page-title">Submissions</h1>
+  <div class="admin-actions" style="margin-bottom: 12px">
+    {# v2.8: the export carries the current filters, so an admin can
+       download exactly the view they are looking at (one user's log). #}
+    <a class="btn" href="/admin/submissions/export.pdf?user={{ f_user|urlencode }}&challenge={{ f_challenge|urlencode }}&correct={{ f_correct|urlencode }}">Export PDF</a>
+  </div>
+  <form method="get" action="/admin/submissions" class="filters">
+    <label>User
+      <select name="user">
+        <option value="">All</option>
+        {% for u in users %}
+          <option value="{{ u.username }}" {{ 'selected' if f_user == u.username else '' }}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Challenge
+      <select name="challenge">
+        <option value="">All</option>
+        {% for c in challenges %}
+          <option value="{{ c.id }}" {{ 'selected' if f_challenge == c.id|string else '' }}>{{ c.title }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Result
+      <select name="correct">
+        <option value="">All</option>
+        <option value="1" {{ 'selected' if f_correct == '1' else '' }}>Correct</option>
+        <option value="0" {{ 'selected' if f_correct == '0' else '' }}>Incorrect</option>
+      </select>
+    </label>
+    <button type="submit" class="btn btn-small">Filter</button>
+  </form>
+  {# v2.8: per-user evidence summary when one user is selected — the
+     numbers an admin needs before digging into the rows below. #}
+  {% if user_summary %}
+  <p class="user-summary">
+    <strong>{{ user_summary.username }}</strong> — {{ user_summary.total }} submissions
+    · {{ user_summary.correct }} correct · {{ user_summary.incorrect }} incorrect
+    · {{ user_summary.challenges }} challenges attempted
+    {% if user_summary.first %}· first {{ user_summary.first.strftime("%d %b %H:%M") }} UTC{% endif %}
+    {% if user_summary.last %}· last {{ user_summary.last.strftime("%d %b %H:%M") }} UTC{% endif %}
+    · <a href="/admin/submissions/export.pdf?user={{ user_summary.username|urlencode }}">Export this user's PDF</a>
+  </p>
+  {% endif %}
+  <table class="table">
+    <thead><tr><th>Time (UTC)</th><th>User</th><th>Challenge</th><th>Submitted (hash)</th><th>Result</th></tr></thead>
+    <tbody>
+    {% for s, username, title in rows %}
+      <tr>
+        <td>{{ s.submitted_at.strftime("%d %b %H:%M:%S") }}</td>
+        <td>{{ username }}</td>
+        <td>{{ title }}</td>
+        <td><code>{{ s.submitted_flag_hash[:12] }}&hellip;</code></td>
+        <td>{% if s.is_correct %}<span class="badge badge-ok">correct</span>{% else %}<span class="badge">incorrect</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="muted">No submissions match.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="hint-text">Showing the latest 200. Plaintext flags are NEVER stored — this log shows submitted-hash prefixes only, never the flag itself.</p>
+</section>
+{% endblock %}
