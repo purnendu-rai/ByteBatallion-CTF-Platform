@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="app/static/img/logo.png" alt="ByteBatallion Logo" width="120" />
-
-# BYTE_BATALLION CTF PLATFORM
+# CTF PLATFORM
 
 **Next-Generation Self-Hosted Cybersecurity Competition Platform**
 
