@@ -160,24 +160,6 @@ flowchart TD
 
 ---
 
-## Security Architecture
-
-ByteBatallion was designed with defense-in-depth principles:
-
-| Threat Vector | Mitigation Strategy |
-| :--- | :--- |
-| **SQL Injection** | Exclusively parameterized queries via SQLAlchemy ORM. |
-| **Cross-Site Scripting (XSS)** | Autoescaping enforced in Jinja2 (`| safe` is banned); dynamic HTML sanitized via `escapeHtml()`. |
-| **Cross-Site Request Forgery (CSRF)** | Double-submit CSRF cookie token required on all state-altering POST requests. |
-| **Session Hijacking** | Signed, `HttpOnly`, `SameSite=Lax` cookies; `Secure` flag enforced in production. |
-| **Brute-Force Attacks** | In-memory IP/User rate limiting (5 consecutive failures $\rightarrow$ 15-minute lock). |
-| **Content Security Policy (CSP)** | Strict policy (`script-src 'self'`) forbidding inline scripts and unauthorized external origins. |
-| **Credential Safety** | Passwords hashed using `bcrypt` (12 rounds). Admin password resets issue single-use tokens; passwords never appear in URLs. |
-| **Malicious Uploads** | 50 MB upload ceiling and strict file extension blocklist rejecting executables (`.exe`, `.sh`, `.php`, `.py`, etc.). |
-| **Production Guards** | Server aborts startup in production if `DEBUG=true` or if using default/insecure `SECRET_KEY`. |
-
----
-
 ## Quickstart
 
 ### Prerequisites
