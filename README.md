@@ -52,83 +52,6 @@ Wrapped in an immersive cyberpunk aesthetic, ByteBatallion provides an authentic
 
 ---
 
-## UI and Platform Experience
-
-ByteBatallion features a responsive, dark-mode terminal UI engineered with pure CSS3 and native JavaScript (zero bulky frontend frameworks), delivering instantaneous page loads and low server overhead.
-
-### 1. Interactive Cyber Terminal (Home Screen)
-
-Upon loading the home page, players are greeted with a booting terminal overlay that transitions into a fully functional in-browser hacker shell:
-
-```text
-+-----------------------------------------------------------------------------------+
-|  [!] BYTE_BATALLION CTF PLATFORM v0.1 // TERMINAL SESSION ACTIVE                 |
-+-----------------------------------------------------------------------------------+
-|  guest@bytebatallion:~$ help                                                      |
-|  Available commands:                                                              |
-|    help      - display available commands                                         |
-|    ls        - list directory contents                                            |
-|    cat <f>   - display content of file (e.g. cat rules.txt)                        |
-|    clear     - clear terminal screen                                              |
-|    whoami    - print current session identity                                     |
-|    banner    - display ByteBatallion ASCII artwork                                |
-|                                                                                   |
-|  guest@bytebatallion:~$ cat rules.txt                                             |
-|  [01] Every player gets their own flag; sharing one never works.                  |
-|  [02] Attacks against platform infrastructure will result in an immediate ban.    |
-|  [03] Format reference: BB{core_secret_hex}                                       |
-|                                                                                   |
-|  guest@bytebatallion:~$ _                                                         |
-+-----------------------------------------------------------------------------------+
-```
-
-### 2. The Batallion (12 Operator Dossiers)
-
-A tactile showcase featuring 12 elite operators with interactive card flips revealing threat classifications, specialties, and background dossiers:
-
-| Operator | Role | Specialization | Threat Level |
-| :--- | :--- | :--- | :---: |
-| **HACKERP** | Founder & Lead Exploiter | Offensive Ops, Red Team Lead | Critical |
-| **C1PH3R** | Cryptanalyst | Modern & Classical Cryptography | Critical |
-| **GH0ST** | Covert Operator | Malware Analysis, Stealth Ops | High |
-| **V01D** | Kernel Specialist | Zero-Day Research, Kernel Space | Critical |
-| **S1REN** | OSINT Specialist | Social Engineering, Intelligence | High |
-| **R4ZOR** | Hardware Hacker | IoT Security, Firmware Extraction | High |
-| **N3TRUNN3R** | Network Infiltrator | Network Pivoting, Active Directory | High |
-| **B1NARY** | Reverse Engineer | Binary Exploitation, Decompilation | Critical |
-| **V3N0M** | Database Hunter | SQL Injection, Data Exfiltration | High |
-| **SH4D0W** | Steganographer | Steganography, Hidden Payloads | High |
-| **F0RG3** | Exploit Developer | Memory Corruption, ROP Chains | Critical |
-| **Z3R0D4Y** | Vulnerability Architect | Architecture Flaws, Logic Bugs | Critical |
-
-### 3. Challenge Arena
-
-```text
-+-----------------------------------------------------------------------------------+
-| CATEGORIES: [ ALL ]  [ WEB ]  [ CRYPTO ]  [ FORENSICS ]  [ PWN ]  [ REV ]  [ OSINT ] |
-+-----------------------------------------------------------------------------------+
-|                                                                                   |
-|  +---------------------------+  +---------------------------+  +----------------+ |
-|  | [WEB] SQLi Injection      |  | [REV] Matrix Vault        |  | [CRYPTO] RSA   | |
-|  | Points: 150 pts           |  | Points: 250 pts           |  | Points: 200 pts| |
-|  | Solved By: 14 Teams       |  | Solved By: 5 Teams        |  | Solved By: 9   | |
-|  | Status: [ SOLVED ]        |  | Status: [ UNSOLVED ]      |  | Status: [OPEN] | |
-|  +---------------------------+  +---------------------------+  +----------------+ |
-|                                                                                   |
-+-----------------------------------------------------------------------------------+
-```
-
-### 4. Admin Management Dashboard
-
-The administrative portal (`/admin`) provides competition organizers with complete situational awareness:
-
-- **Metrics & Solve Velocity**: Real-time graphs plotting solves per day and challenge difficulty progression.
-- **Submissions Audit**: Full log of correct and incorrect attempts with user filtering, IP tracking, and one-click PDF generation.
-- **Player & Team Control**: Searchable directory with instant role adjustments (`player`, `author`, `admin`), credential resets, and ban toggles.
-- **CTF Phase Management**: Global switches for registration status, scoreboard visibility, and start/end countdowns with automated submission locks.
-
----
-
 ## Anti-Cheat Dynamic Flag Engine
 
 ByteBatallion solves flag sharing without requiring heavy VM infrastructure:
@@ -250,10 +173,6 @@ ByteBatallion maintains comprehensive automated test coverage covering unit beha
 ```bash
 # Run the complete test suite
 python -m pytest -v
-```
-
-```text
-======================= 132 passed in 109.20s =======================
 ```
 
 ---
