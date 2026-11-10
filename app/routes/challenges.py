@@ -10,13 +10,14 @@ the raw-file route below is ADMIN-ONLY (for verifying uploads).
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.flag_engine import list_original_files, originals_dir
+from app.flag_engine import list_original_files
+from app.storage import get_storage
 from app.models import (
     CHALLENGE_CATEGORIES,
     Challenge,
@@ -225,18 +226,15 @@ def download_challenge_file(
     """Download an author-uploaded challenge file (login required).
 
     Files are served ONLY to signed-in users (anonymous users are sent
-    to login, with a `next` back here) and only from the challenge's own
-    originals directory (path-traversal safe).
+    to login, with a `next` back here). The active storage backend
+    serves them: local disk (FileResponse) or Backblaze B2
+    (streamed from the private bucket, never a public URL).
     """
     user = getattr(request.state, "user", None)
     if user is None:
         raise HTTPException(status_code=302, headers={"Location": login_redirect(request)})
     challenge = _get_challenge_or_404(db, challenge_id, user)
-    base = originals_dir(challenge.id).resolve()
-    target = (base / filename).resolve()
-    if not target.is_relative_to(base) or not target.is_file():
-        raise HTTPException(status_code=404)
-    return FileResponse(target, filename=target.name)
+    return get_storage().download_response(challenge.id, filename)
 
 
 @router.get("/{challenge_id}/files/{filename}")

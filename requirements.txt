@@ -25,5 +25,10 @@ pytest==9.0.3
 # keeps plain SQLite (the default DATABASE_URL). Render runs Linux.
 sqlalchemy-libsql==0.2.0; sys_platform != 'win32'
 
+# Backblaze B2 (S3-compatible) file storage — v3.3. boto3 talks to B2
+# through its S3-compatible API; no platform marker needed (wheels
+# exist for Windows too). Only used when B2_* env vars are set.
+boto3==1.43.127
+
 # admin PDF export (v2)
 reportlab==4.2.5

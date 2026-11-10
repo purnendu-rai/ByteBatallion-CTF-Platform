@@ -1,7 +1,9 @@
-# ByteBatallion — Render Blueprint (v3.1)
+# ByteBatallion — Render Blueprint (v3.3)
 # Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
 # FREE tier (no card needed): sleeps after 15 min idle and the filesystem
-# is ephemeral, so the SQLite database resets on every restart/redeploy.
+# is ephemeral. The database lives in Turso (v3.2) so records survive
+# restarts; challenge files live in Backblaze B2 when the B2_* values
+# below are set (v3.3), otherwise they stay on the ephemeral disk.
 # The first admin is created on boot from the BOOTSTRAP_ADMIN_* values
 # below (sync: false = Render asks for them in the dashboard, they are
 # NEVER stored in this file). Leaving them set re-creates the admin on
@@ -37,4 +39,20 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: TURSO_AUTH_TOKEN
+        sync: false
+      # Backblaze B2 (S3-compatible) file storage — v3.3. B2_BUCKET_NAME
+      # is the bucket (e.g. bytebatallion-files); B2_ENDPOINT is the
+      # bucket's S3 endpoint from the Backblaze dashboard
+      # (https://s3.<region>.backblazeb2.com); B2_KEY_ID /
+      # B2_APPLICATION_KEY are an application key scoped to that bucket.
+      # All four are sync: false — real values live only in the Render
+      # dashboard, never in this file or the repo. Leave all four unset
+      # to keep files on local disk (they wipe on restart).
+      - key: B2_BUCKET_NAME
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_ENDPOINT
         sync: false

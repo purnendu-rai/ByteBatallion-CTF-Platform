@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     # libsql:// URL. NEVER commit a real token — set it in the host
     # dashboard, not in render.yaml or .env.
     turso_auth_token: str | None = None
+    # Backblaze B2 (S3-compatible) file storage — v3.3. When
+    # B2_BUCKET_NAME is set, challenge files live in B2 instead of the
+    # host's ephemeral disk; when unset, files stay on local disk (the
+    # pre-v3.3 behaviour). All four must be set together — a partial
+    # config refuses to build a client with a clear error. NEVER commit
+    # real values — set them in the host dashboard, never in .env.
+    b2_bucket_name: str | None = None
+    b2_key_id: str | None = None
+    b2_application_key: str | None = None
+    b2_endpoint: str | None = None
 
 
 @lru_cache

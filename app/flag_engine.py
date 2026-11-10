@@ -27,7 +27,7 @@ import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 
 # --- on-disk paths ------------------------------------------------------------
 
@@ -271,10 +271,15 @@ def generate_instance_files(challenge_id: int, user_id: int, flag: str) -> tuple
 # --- author file storage helpers (used by the admin CRUD) --------------------------
 
 def list_original_files(challenge_id: int) -> list[str]:
-    d = originals_dir(challenge_id)
-    if not d.is_dir():
-        return []
-    return sorted(p.name for p in d.iterdir() if p.is_file())
+    """Filenames of the challenge's originals, via the active backend.
+
+    Local disk by default; Backblaze B2 when B2_* is configured
+    (app/storage.py). The admin form and the challenge detail page
+    both read through here.
+    """
+    from app.storage import get_storage
+
+    return get_storage().list_files(challenge_id)
 
 
 def sanitize_filename(filename: str) -> str | None:
@@ -316,44 +321,18 @@ def extension_blocked(filename: str) -> bool:
 
 
 async def save_uploaded_files(challenge_id: int, files: list[UploadFile] | None) -> list[str]:
-    """Stream author files into data/challenges/<id>/originals/.
+    """Store author files via the active backend (app/storage.py).
 
-    Every file passes three gates (brief §13):
+    Local disk by default (``data/challenges/<id>/originals/``);
+    Backblaze B2 when B2_* is configured. Every file passes three
+    gates (brief §13):
     1. sanitized filename (no paths / weird characters)
     2. extension blocklist (executables & active scripts -> 400)
     3. size cap while streaming (default 50 MB -> 413)
 
-    Returns the saved (sanitized) filenames. A rejected file is removed
-    before raising, so nothing partial stays on disk.
+    Returns the saved (sanitized) filenames. A rejected file leaves
+    nothing partial behind.
     """
-    if not files:
-        return []
-    dest_dir = originals_dir(challenge_id)
-    dest_dir.mkdir(parents=True, exist_ok=True)
-    saved: list[str] = []
-    for upload in files:
-        if not upload or not upload.filename:
-            continue
-        safe = sanitize_filename(upload.filename)
-        if safe is None:
-            continue
-        if extension_blocked(safe):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Blocked file type — not allowed on this platform: {safe}",
-            )
-        dest = dest_dir / safe
-        size = 0
-        try:
-            with dest.open("wb") as out:
-                while chunk := await upload.read(1024 * 1024):
-                    size += len(chunk)
-                    if size > MAX_FILE_BYTES:
-                        raise HTTPException(status_code=413, detail=f"File too large: {safe}")
-                    out.write(chunk)
-        except HTTPException:
-            dest.unlink(missing_ok=True)
-            raise
-        if safe not in saved:
-            saved.append(safe)
-    return saved
+    from app.storage import get_storage
+
+    return await get_storage().save_files(challenge_id, files)
