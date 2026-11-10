@@ -1,0 +1,26 @@
+# ByteBatallion — Render Blueprint (v3.0)
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+# Paid Starter uses the workspace's $50 credit (~$7.25/mo with the disk):
+# no 15-min sleep, 0.5 CPU, and the 1 GB persistent disk keeps the
+# SQLite database + challenge uploads alive across restarts/redeploys.
+services:
+  - type: web
+    name: bytebatallion
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: HOST
+        value: 0.0.0.0
+      - key: ENVIRONMENT
+        value: prod
+      - key: SECRET_KEY
+        generateValue: true
+    disk:
+      name: bytebatallion-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1
