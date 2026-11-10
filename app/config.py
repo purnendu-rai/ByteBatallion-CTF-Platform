@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     bootstrap_admin_username: str | None = None
     bootstrap_admin_email: str | None = None
     bootstrap_admin_password: str | None = None
+    # Turso (hosted SQLite) auth token. Only used when DATABASE_URL is a
+    # libsql:// URL. NEVER commit a real token — set it in the host
+    # dashboard, not in render.yaml or .env.
+    turso_auth_token: str | None = None
 
 
 @lru_cache

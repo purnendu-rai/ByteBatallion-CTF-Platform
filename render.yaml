@@ -30,3 +30,11 @@ services:
         sync: false
       - key: BOOTSTRAP_ADMIN_PASSWORD
         sync: false
+      # Turso (hosted SQLite) — v3.2. DATABASE_URL is the libsql:// URL
+      # from the Turso dashboard; TURSO_AUTH_TOKEN is the database token.
+      # Both are sync: false so their real values live only in the
+      # Render dashboard, never in this file or the repo.
+      - key: DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

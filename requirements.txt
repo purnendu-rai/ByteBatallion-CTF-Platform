@@ -1,5 +1,5 @@
 # BYTE_BATALLION_CTF_PLATFORM dependencies — pinned (brief, Section 3)
-# v0.1 audit: fastapi/starlette/python-multipart/pytest bumped past
+# v3.0 audit: fastapi/starlette/python-multipart/pytest bumped past
 # their PYSEC advisories (pip-audit clean); other pins unchanged.
 fastapi==0.162.2
 starlette==1.10.0
@@ -12,13 +12,18 @@ pydantic-settings==2.8.1
 
 # auth (Phase 1)
 passlib==1.7.4
-bcrypt==4.0.1
+bcrypt==4.3.0
 itsdangerous==2.2.0
 python-multipart==0.0.31
 
 # tests
 httpx==0.28.1
 pytest==9.0.3
+
+# Turso (hosted SQLite) dialect — v3.2. Linux/macOS only: the libsql
+# driver ships no Windows wheels, so local Windows dev skips it and
+# keeps plain SQLite (the default DATABASE_URL). Render runs Linux.
+sqlalchemy-libsql==0.2.0; sys_platform != 'win32'
 
 # admin PDF export (v2)
 reportlab==4.2.5
