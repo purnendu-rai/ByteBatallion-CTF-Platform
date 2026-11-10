@@ -86,21 +86,40 @@ def init_db():
 def _add_missing_columns() -> None:
     """Add newly-introduced columns to already-existing tables.
 
-    `create_all` never alters an existing table, so a DB created before a
-    column existed is missing it. These are additive-only, nullable
+    `create_all` never alters an existing table, so a DB created before
+    a column existed is missing it. These are additive-only, nullable
     columns, which SQLite and PostgreSQL both accept at any time — no data
     migration, no SQLite-only syntax.
-    """
-    from sqlalchemy import inspect, text
 
-    wanted = {"challenges": {"flag_sha256": "VARCHAR(64)"}}
-    inspector = inspect(engine)
-    existing_tables = set(inspector.get_table_names())
-    with engine.begin() as conn:
-        for table, columns in wanted.items():
-            if table not in existing_tables:
-                continue
-            present = {c["name"] for c in inspector.get_columns(table)}
-            for col, ddl in columns.items():
-                if col not in present:
+    The ALTER is attempted unconditionally and "column already exists"
+    is swallowed: a reflected column list can go stale (SQLAlchemy's
+    Inspector caches per instance, and a pooled connection can hold a
+    pre-DDL view), which used to make the check-then-ALTER race fail
+    the whole boot with "duplicate column". Each ALTER runs in its own
+    transaction so a swallowed failure cannot poison the next one
+    (Postgres aborts the whole transaction on a failed statement).
+    """
+    from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
+
+    wanted = {
+        "challenges": {
+            "flag_sha256": "VARCHAR(64)",
+            "max_attempts": "INTEGER",
+        },
+        # NOT NULL DEFAULT 0 so pre-existing solves read as False —
+        # a plain nullable BOOLEAN would leave them NULL, and
+        # `is_rejected IS FALSE` would then wrongly exclude every
+        # solve made before this column existed.
+        "solves": {"is_rejected": "BOOLEAN NOT NULL DEFAULT 0"},
+    }
+    for table, columns in wanted.items():
+        for col, ddl in columns.items():
+            try:
+                with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
+            except OperationalError as exc:
+                msg = str(exc).lower()
+                if "duplicate column" in msg or "already exists" in msg:
+                    continue  # column is already there — nothing to do
+                raise

@@ -48,6 +48,10 @@
                 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <button type="submit" class="btn btn-small {{ 'btn-danger' if not u.is_banned }}">{{ "Unban" if u.is_banned else "Ban" }}</button>
               </form>
+              <form method="post" action="/admin/users/{{ u.id }}/delete" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <button type="submit" class="btn btn-small btn-danger">Delete</button>
+              </form>
             {% endif %}
             <form method="post" action="/admin/users/{{ u.id }}/password" class="inline-form">
               <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">

@@ -18,6 +18,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -58,6 +59,31 @@ def submit_flag(
     submitted = flag.strip()
     if not submitted:
         return RedirectResponse(f"{detail_url}?result=incorrect", status_code=303)
+
+    if user.role == "player":
+        # Rejected solve: the admin voided this solve and locked the
+        # challenge for this player — no further attempts, and the
+        # attempt is not even logged.
+        rejected = (
+            db.query(Solve).filter_by(user_id=user.id, challenge_id=challenge_id)
+            .filter(Solve.is_rejected.is_(True))
+            .first()
+        )
+        if rejected is not None:
+            return RedirectResponse(f"{detail_url}?result=rejected", status_code=303)
+        # Attempts limit: each wrong flag burns one chance; at 0 the
+        # challenge locks for this player.
+        if challenge.max_attempts is not None:
+            wrong = (
+                db.query(func.count()).select_from(Submission)
+                .filter(Submission.user_id == user.id,
+                        Submission.challenge_id == challenge_id,
+                        Submission.is_correct.is_(False))
+                .scalar()
+                or 0
+            )
+            if wrong >= challenge.max_attempts:
+                return RedirectResponse(f"{detail_url}?result=locked", status_code=303)
 
     if not submission_rate_limiter.check(user.id):
         return RedirectResponse(f"{detail_url}?result=ratelimited", status_code=303)

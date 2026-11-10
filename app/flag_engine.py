@@ -336,3 +336,16 @@ async def save_uploaded_files(challenge_id: int, files: list[UploadFile] | None)
     from app.storage import get_storage
 
     return await get_storage().save_files(challenge_id, files)
+
+
+def delete_uploaded_file(challenge_id: int, filename: str) -> None:
+    """Delete ONE already-uploaded file via the active backend.
+
+    The admin's delete button on the challenge edit form. The name
+    must already be its sanitized form (anything else is ignored) —
+    callers get the names from `list_original_files`, never from raw
+    user input.
+    """
+    from app.storage import get_storage
+
+    get_storage().delete_file(challenge_id, filename)

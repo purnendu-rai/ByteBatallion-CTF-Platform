@@ -56,6 +56,10 @@ class Challenge(Base):
     is_published: Mapped[bool] = mapped_column(Boolean, default=False)
     # Soft delete (Phase 2): deleted challenges keep their solves in the DB.
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Max wrong-flag attempts per player (None = unlimited, the
+    # default). The admin picks it in the challenge form: Unlimited or
+    # 1–20. At 0 remaining the challenge locks for that player.
+    max_attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
@@ -91,7 +95,14 @@ class Submission(Base):
 
 
 class Solve(Base):
-    """One row per (user, challenge) — a second correct submit awards nothing."""
+    """One row per (user, challenge) — a second correct submit awards nothing.
+
+    `is_rejected` is the admin's cheating call: a rejected solve scores
+    NOTHING anywhere (scoreboard, board counts, first blood, profile)
+    and locks the challenge for that player — they cannot submit it
+    again. Recovering flips it back and restores the points, because
+    `points_awarded` is never overwritten by a rejection.
+    """
 
     __tablename__ = "solves"
 
@@ -99,6 +110,7 @@ class Solve(Base):
     challenge_id: Mapped[int] = mapped_column(ForeignKey("challenges.id"), primary_key=True)
     solved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     points_awarded: Mapped[int] = mapped_column(Integer)
+    is_rejected: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Announcement(Base):

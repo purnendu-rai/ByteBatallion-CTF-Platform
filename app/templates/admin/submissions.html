@@ -47,7 +47,7 @@
   </p>
   {% endif %}
   <table class="table">
-    <thead><tr><th>Time (IST)</th><th>User</th><th>Challenge</th><th>Submitted (hash)</th><th>Result</th></tr></thead>
+    <thead><tr><th>Time (IST)</th><th>User</th><th>Challenge</th><th>Submitted (hash)</th><th>Result</th><th>Action</th></tr></thead>
     <tbody>
     {% for s, username, title in rows %}
       <tr>
@@ -56,9 +56,35 @@
         <td>{{ title }}</td>
         <td><code>{{ s.submitted_flag_hash[:12] }}&hellip;</code></td>
         <td>{% if s.is_correct %}<span class="badge badge-ok">correct</span>{% else %}<span class="badge">incorrect</span>{% endif %}</td>
+        <td>
+          {# Reject / Recover act on the SOLVE for this (user, challenge):
+             Reject voids the points and locks the challenge for the
+             player; Recover undoes it. Only correct rows have a solve. #}
+          {% if s.is_correct %}
+            {% set back = "/admin/submissions?user=" ~ f_user|urlencode ~ "&challenge=" ~ f_challenge|urlencode ~ "&correct=" ~ f_correct|urlencode %}
+            {% if (s.user_id, s.challenge_id) in rejected_keys %}
+              <span class="badge badge-danger">rejected</span>
+              <form method="post" action="/admin/solves/recover" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <input type="hidden" name="user_id" value="{{ s.user_id }}">
+                <input type="hidden" name="challenge_id" value="{{ s.challenge_id }}">
+                <input type="hidden" name="return_to" value="{{ back }}">
+                <button type="submit" class="btn btn-small">Recover</button>
+              </form>
+            {% else %}
+              <form method="post" action="/admin/solves/reject" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <input type="hidden" name="user_id" value="{{ s.user_id }}">
+                <input type="hidden" name="challenge_id" value="{{ s.challenge_id }}">
+                <input type="hidden" name="return_to" value="{{ back }}">
+                <button type="submit" class="btn btn-small btn-danger">Reject</button>
+              </form>
+            {% endif %}
+          {% endif %}
+        </td>
       </tr>
     {% else %}
-      <tr><td colspan="5" class="muted">No submissions match.</td></tr>
+      <tr><td colspan="6" class="muted">No submissions match.</td></tr>
     {% endfor %}
     </tbody>
   </table>

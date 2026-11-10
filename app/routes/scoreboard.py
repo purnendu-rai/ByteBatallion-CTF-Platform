@@ -74,7 +74,11 @@ def ranked_players(db: Session):
             func.count(Solve.challenge_id).label("solve_count"),
             last_solve_col,
         )
-        .outerjoin(Solve, Solve.user_id == User.id)
+        # The rejected condition sits INSIDE the join (not a WHERE
+        # filter) so a player whose only solves were rejected still
+        # ranks — with 0 points — instead of vanishing.
+        .outerjoin(Solve, (Solve.user_id == User.id)
+                   & (Solve.is_rejected.is_(False)))
         .outerjoin(charges_sq, charges_sq.c.uid == User.id)
         .filter(User.role == "player", User.is_banned.is_(False))
         .group_by(User.id)
@@ -107,7 +111,7 @@ def ranked_teams(db: Session) -> list[dict]:
         .join(Solve, Solve.user_id == TeamMembership.user_id)
         .join(User, User.id == TeamMembership.user_id)
         .join(Challenge, Challenge.id == Solve.challenge_id)
-        .filter(User.is_banned.is_(False))
+        .filter(User.is_banned.is_(False), Solve.is_rejected.is_(False))
         .group_by(TeamMembership.team_id, Solve.challenge_id, Challenge.points)
         .subquery()
     )
@@ -160,10 +164,12 @@ def ranked_teams(db: Session) -> list[dict]:
 
 
 def player_points(db: Session, user_id: int) -> int:
-    """Solve points minus paid-hint charges for one player."""
+    """Solve points minus paid-hint charges for one player.
+
+    Rejected solves score nothing."""
     points = (
         db.query(func.coalesce(func.sum(Solve.points_awarded), 0))
-        .filter(Solve.user_id == user_id)
+        .filter(Solve.user_id == user_id, Solve.is_rejected.is_(False))
         .scalar()
     )
     charged = (
@@ -196,8 +202,11 @@ def profile(
     """Own profile: username, solves, points (net of hint charges), rank,
     team (when teams_mode is enabled), visual circular graph data, and solves log."""
     points = player_points(db, user.id)
+    # A rejected solve is not a solve anywhere — not in the count,
+    # the log, the category graph, or the rank.
     solve_count = (
-        db.query(func.count()).select_from(Solve).filter(Solve.user_id == user.id).scalar()
+        db.query(func.count()).select_from(Solve)
+        .filter(Solve.user_id == user.id, Solve.is_rejected.is_(False)).scalar()
         or 0
     )
 
@@ -216,7 +225,7 @@ def profile(
     solves_query = (
         db.query(Solve, Challenge)
         .join(Challenge, Solve.challenge_id == Challenge.id)
-        .filter(Solve.user_id == user.id)
+        .filter(Solve.user_id == user.id, Solve.is_rejected.is_(False))
         .order_by(Solve.solved_at.desc())
         .all()
     )
@@ -262,7 +271,7 @@ def profile(
     cat_counts = (
         db.query(Challenge.category, func.count(Solve.challenge_id))
         .join(Challenge, Solve.challenge_id == Challenge.id)
-        .filter(Solve.user_id == user.id)
+        .filter(Solve.user_id == user.id, Solve.is_rejected.is_(False))
         .group_by(Challenge.category)
         .all()
     )

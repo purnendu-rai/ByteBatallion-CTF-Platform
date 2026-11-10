@@ -10,13 +10,23 @@
     </div>
   </div>
   {% if msg %}<p class="msg-ok">{{ msg }}</p>{% endif %}
+  {# Bulk publish: the checkboxes live in the table rows but belong to
+     this form via the `form` attribute (no nested forms). Every
+     selected draft is published with the SAME timestamp, so they all
+     appear on the board together. #}
+  <form method="post" action="/admin/challenges/publish" id="bulk-publish-form" class="inline-form" style="margin-bottom: 12px">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button type="submit" class="btn">Publish selected together</button>
+    <span class="hint-text">Tick the drafts below, then publish them all at once — they appear on the board at the same time.</span>
+  </form>
   <table class="table">
     <thead>
-      <tr><th>ID</th><th>Title</th><th>Category</th><th>Points</th><th>Solves</th><th>Status</th><th>Actions</th></tr>
+      <tr><th></th><th>ID</th><th>Title</th><th>Category</th><th>Points</th><th>Solves</th><th>Status</th><th>Actions</th></tr>
     </thead>
     <tbody>
     {% for c in challenges %}
       <tr class="{{ 'row-deleted' if c.is_deleted }}">
+        <td>{% if not c.is_deleted and not c.is_published %}<input type="checkbox" name="challenge_ids" value="{{ c.id }}" form="bulk-publish-form">{% endif %}</td>
         <td>{{ c.id }}</td>
         <td><a href="/admin/challenges/{{ c.id }}/edit">{{ c.title }}</a></td>
         <td>{{ c.category }}</td>
@@ -41,7 +51,7 @@
         </td>
       </tr>
     {% else %}
-      <tr><td colspan="7" class="muted">No challenges yet.</td></tr>
+      <tr><td colspan="8" class="muted">No challenges yet.</td></tr>
     {% endfor %}
     </tbody>
   </table>

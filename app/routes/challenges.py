@@ -22,6 +22,7 @@ from app.models import (
     Challenge,
     HintUnlock,
     Solve,
+    Submission,
     User,
     ctf_state,
     normalized_hints,
@@ -52,15 +53,24 @@ def board(request: Request, user=Depends(require_user), db: Session = Depends(ge
     solved_ids: set[int] = set()
     if show_cards:
         # Challenges this player has already solved — the board marks
-        # their cards green with a [SOLVED] badge.
+        # their cards green with a [SOLVED] badge. A rejected solve
+        # does not count as solved.
         solved_ids = {
             row.challenge_id
             for row in db.query(Solve.challenge_id)
-            .filter(Solve.user_id == user.id).all()
+            .filter(Solve.user_id == user.id, Solve.is_rejected.is_(False)).all()
         }
+        # Solve counts count only solves that still score: a banned
+        # player's solves and rejected solves are invisible here. The
+        # ban/reject conditions sit INSIDE the joins (not a WHERE
+        # filter) so a challenge whose only solves are banned/rejected
+        # still shows — with 0 solves — instead of vanishing.
         rows = (
-            db.query(Challenge, func.count(Solve.user_id))
-            .outerjoin(Solve, Solve.challenge_id == Challenge.id)
+            db.query(Challenge, func.count(User.id))
+            .outerjoin(Solve, (Solve.challenge_id == Challenge.id)
+                       & (Solve.is_rejected.is_(False)))
+            .outerjoin(User, (User.id == Solve.user_id)
+                       & (User.is_banned.is_(False)))
             .filter(Challenge.is_published.is_(True), Challenge.is_deleted.is_(False))
             .order_by(Challenge.created_at, Challenge.id)
             .group_by(Challenge.id)
@@ -80,8 +90,12 @@ def board(request: Request, user=Depends(require_user), db: Session = Depends(ge
                             kv[1][0]["challenge"].id),
         )
         # First blood: earliest solve per challenge, shown on the card (brief 10).
+        # Banned players and rejected solves never hold first blood —
+        # the earliest solve that still scores takes the badge.
         earliest = (
             db.query(Solve.challenge_id, func.min(Solve.solved_at).label("t"))
+            .join(User, User.id == Solve.user_id)
+            .filter(User.is_banned.is_(False), Solve.is_rejected.is_(False))
             .group_by(Solve.challenge_id)
             .subquery()
         )
@@ -90,6 +104,7 @@ def board(request: Request, user=Depends(require_user), db: Session = Depends(ge
             .join(User, User.id == Solve.user_id)
             .join(earliest, (earliest.c.challenge_id == Solve.challenge_id)
                    & (earliest.c.t == Solve.solved_at))
+            .filter(User.is_banned.is_(False), Solve.is_rejected.is_(False))
             .all()
         )
     return templates.TemplateResponse(
@@ -115,15 +130,47 @@ def detail(
     # Before the CTF starts, players are redirected to the countdown board.
     if ctf_state(db)["phase"] == "before" and user.role != "admin":
         return RedirectResponse("/challenges", status_code=303)
+    # Solve count counts only solves that still score (banned players
+    # and rejected solves are invisible — same rule as the board).
     solve_count = (
         db.query(func.count()).select_from(Solve)
-        .filter(Solve.challenge_id == challenge_id).scalar()
+        .join(User, User.id == Solve.user_id)
+        .filter(Solve.challenge_id == challenge_id,
+                User.is_banned.is_(False), Solve.is_rejected.is_(False))
+        .scalar()
     )
     files = list_original_files(challenge_id)
     has_solved = (
-        db.query(Solve).filter_by(user_id=user.id, challenge_id=challenge_id).first()
+        db.query(Solve).filter_by(user_id=user.id, challenge_id=challenge_id)
+        .filter(Solve.is_rejected.is_(False))
+        .first()
     ) is not None
     result = request.query_params.get("result", "")
+
+    # Attempts (players only; staff are never locked out of previews).
+    # A rejected solve locks the challenge outright; otherwise the
+    # remaining count is max_attempts minus wrong submissions so far.
+    rejected_solve = False
+    attempts_remaining = None
+    if user.role == "player":
+        rejected_solve = (
+            db.query(Solve).filter_by(user_id=user.id, challenge_id=challenge_id)
+            .filter(Solve.is_rejected.is_(True))
+            .first()
+        ) is not None
+        if challenge.max_attempts is not None and not has_solved:
+            wrong = (
+                db.query(func.count()).select_from(Submission)
+                .filter(Submission.user_id == user.id,
+                        Submission.challenge_id == challenge_id,
+                        Submission.is_correct.is_(False))
+                .scalar()
+                or 0
+            )
+            attempts_remaining = max(0, challenge.max_attempts - wrong)
+    attempts_locked = rejected_solve or (
+        attempts_remaining is not None and attempts_remaining == 0
+    )
 
     # Phase 6 — hints with costs. The template needs, per hint, whether
     # the player already unlocked it (paid hints are shown afterwards
@@ -153,6 +200,9 @@ def detail(
             "has_files": bool(files),
             "has_solved": has_solved,
             "result": result,
+            "attempts_remaining": attempts_remaining,
+            "attempts_locked": attempts_locked,
+            "rejected_solve": rejected_solve,
         },
     )
 

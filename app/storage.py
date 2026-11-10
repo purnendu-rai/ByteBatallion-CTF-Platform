@@ -137,6 +137,15 @@ class LocalChallengeStorage:
         if d.is_dir():
             shutil.rmtree(d)
 
+    def delete_file(self, challenge_id: int, filename: str) -> None:
+        """Delete ONE uploaded file (admin action from the edit form).
+        Missing files are a no-op — the delete is idempotent."""
+        base = flag_engine.originals_dir(challenge_id).resolve()
+        target = (base / filename).resolve()
+        if not target.is_relative_to(base):
+            return
+        target.unlink(missing_ok=True)
+
 
 class B2ChallengeStorage:
     """Backblaze B2 backend (S3-compatible API via boto3)."""
@@ -302,6 +311,23 @@ class B2ChallengeStorage:
         except ClientError as exc:
             raise HTTPException(
                 status_code=502, detail="Could not delete challenge files — try again."
+            ) from exc
+
+    def delete_file(self, challenge_id: int, filename: str) -> None:
+        """Delete ONE uploaded file (admin action from the edit form).
+        Missing files are a no-op — the delete is idempotent."""
+        from botocore.exceptions import ClientError
+
+        safe = flag_engine.sanitize_filename(filename)
+        if safe is None or safe != filename:
+            return
+        try:
+            self.client.delete_object(
+                Bucket=self.bucket, Key=_b2_key(challenge_id, safe)
+            )
+        except ClientError as exc:
+            raise HTTPException(
+                status_code=502, detail="Could not delete the file — try again."
             ) from exc
 
 

@@ -28,6 +28,16 @@
     <label>Points
       <input type="number" name="points" min="0" max="100000" value="{{ form.points or '100' }}">
     </label>
+
+    <label>Attempts allowed
+      <select name="max_attempts">
+        <option value="" {{ 'selected' if not form.max_attempts else '' }}>Unlimited</option>
+        {% for n in range(1, 21) %}
+          <option value="{{ n }}" {{ 'selected' if form.max_attempts == n|string else '' }}>{{ n }}</option>
+        {% endfor %}
+      </select>
+      <span class="hint-text">How many wrong flags a player may submit. Unlimited by default; when a player runs out of attempts, the challenge locks for them.</span>
+    </label>
     <label>Description
       <textarea name="description" rows="6">{{ form.description or '' }}</textarea>
     </label>
@@ -62,7 +72,12 @@
       {% if files %}
         <ul class="files">
           {% for f in files %}
-            <li><a href="/challenges/{{ challenge.id }}/download/{{ f }}" target="_blank"><code>{{ f }}</code></a></li>
+            <li><a href="/challenges/{{ challenge.id }}/download/{{ f }}" target="_blank"><code>{{ f }}</code></a>
+              <form method="post" action="/admin/challenges/{{ challenge.id }}/files/{{ f }}/delete" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+                <button type="submit" class="btn btn-small btn-danger">Delete file</button>
+              </form>
+            </li>
           {% endfor %}
         </ul>
       {% else %}

@@ -64,6 +64,10 @@
       <p class="ok-msg">Correct — staff solves are not scored.</p>
     {% elif result == "incorrect" %}
       <ul class="errors" style="margin-bottom:0"><li>Incorrect.</li></ul>
+    {% elif result == "locked" %}
+      <ul class="errors" style="margin-bottom:0"><li>No attempts left — this challenge is locked for you.</li></ul>
+    {% elif result == "rejected" %}
+      <ul class="errors" style="margin-bottom:0"><li>Your solve for this challenge was rejected by an admin — you cannot attempt it again.</li></ul>
     {% elif result == "ratelimited" %}
       <ul class="errors" style="margin-bottom:0"><li>Too many submissions — wait a few seconds and try again.</li></ul>
     {% elif result == "notstarted" %}
@@ -71,11 +75,20 @@
     {% elif result == "ended" %}
       <ul class="errors" style="margin-bottom:0"><li>The CTF has ended — submissions are closed.</li></ul>
     {% endif %}
-    <form method="post" action="/submit/{{ challenge.id }}">
-      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-      <input type="text" name="flag" placeholder="BB{...}" required maxlength="256">
-      <button type="submit">Submit</button>
-    </form>
+    {% if rejected_solve %}
+      <p class="errors" style="margin-bottom:0">Your solve for this challenge was rejected by an admin — you cannot attempt it again.</p>
+    {% elif attempts_locked %}
+      <p class="errors" style="margin-bottom:0">No attempts left — this challenge is locked for you.</p>
+    {% else %}
+      {% if attempts_remaining is not none %}
+        <p class="muted">Attempts remaining: {{ attempts_remaining }}</p>
+      {% endif %}
+      <form method="post" action="/submit/{{ challenge.id }}">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="text" name="flag" placeholder="BB{...}" required maxlength="256">
+        <button type="submit">Submit</button>
+      </form>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.database import get_db
 from app.flag_engine import (
+    delete_uploaded_file,
     list_original_files,
     save_uploaded_files,
     sha256_hex,
@@ -35,13 +36,18 @@ from app.models import (
     Announcement,
     Challenge,
     CheatLog,
+    HintUnlock,
+    Instance,
     Page,
     Solve,
     Submission,
+    Team,
+    TeamMembership,
     User,
     ctf_state,
     normalized_hints,
     set_config,
+    utc_now,
 )
 from app.routes.scoreboard import ranked_players
 from app.security import hash_password, one_time_passwords, require_admin, verify_csrf
@@ -118,6 +124,8 @@ def _form_from_challenge(ch: Challenge) -> dict:
         "category": ch.category,
         "description": ch.description,
         "points": str(ch.points),
+        # Attempts dropdown: "" renders as Unlimited.
+        "max_attempts": "" if ch.max_attempts is None else str(ch.max_attempts),
         # One hint per line; a hint with a cost ends with "| <points>".
         "hints": "\n".join(
             f"{h['text']} | {h['cost']}" if h["cost"] else h["text"]
@@ -166,6 +174,19 @@ def _parse_challenge_form(form: dict, existing_sha: str | None = None) -> tuple[
     description = (form.get("description") or "").strip()
     points_raw = (form.get("points") or "").strip() or "100"
     flag = (form.get("flag") or "").strip()
+    # Attempts: "" = Unlimited (None); otherwise an integer 1–20.
+    attempts_raw = (form.get("max_attempts") or "").strip()
+    if not attempts_raw:
+        max_attempts = None
+    else:
+        try:
+            max_attempts = int(attempts_raw)
+            if not 1 <= max_attempts <= 20:
+                errors.append("Attempts must be Unlimited or between 1 and 20.")
+                max_attempts = None
+        except ValueError:
+            errors.append("Attempts must be Unlimited or between 1 and 20.")
+            max_attempts = None
 
     # Hints (Phase 6): one per line, optional `| cost` suffix. Plain
     # lines are free hints (cost 0); legacy strings stay readable.
@@ -213,6 +234,7 @@ def _parse_challenge_form(form: dict, existing_sha: str | None = None) -> tuple[
         "category": category,
         "description": description,
         "points": points,
+        "max_attempts": max_attempts,
         "hints": hints,
         "flag_template": "",          # plaintext flag is never stored
         "flag_sha256": flag_sha256,
@@ -270,6 +292,7 @@ async def challenge_create(
     custom_category: str = Form(""),
     description: str = Form(""),
     points: str = Form("100"),
+    max_attempts: str = Form(""),
     hints: str = Form(""),
     flag: str = Form(""),
     files: list[UploadFile] | None = None,
@@ -278,7 +301,8 @@ async def challenge_create(
     _: None = Depends(verify_csrf),
 ):
     form = {"title": title, "category": category, "custom_category": custom_category,
-            "description": description, "points": points, "hints": hints, "flag": flag}
+            "description": description, "points": points, "max_attempts": max_attempts,
+            "hints": hints, "flag": flag}
     errors, clean = _parse_challenge_form(form)
     if errors:
         # PRG: the error travels in the query string. Field values are
@@ -329,6 +353,7 @@ async def challenge_edit(
     custom_category: str = Form(""),
     description: str = Form(""),
     points: str = Form("100"),
+    max_attempts: str = Form(""),
     hints: str = Form(""),
     flag: str = Form(""),
     files: list[UploadFile] | None = None,
@@ -338,7 +363,8 @@ async def challenge_edit(
 ):
     challenge = _get_challenge_or_404(db, challenge_id)
     form = {"title": title, "category": category, "custom_category": custom_category,
-            "description": description, "points": points, "hints": hints, "flag": flag}
+            "description": description, "points": points, "max_attempts": max_attempts,
+            "hints": hints, "flag": flag}
     errors, clean = _parse_challenge_form(form, existing_sha=challenge.flag_sha256)
     if errors:
         # PRG: the error travels in the query string (field values are
@@ -384,6 +410,62 @@ def challenge_delete(
     challenge.is_published = False
     db.commit()
     return RedirectResponse("/admin/challenges", status_code=303)
+
+
+@router.post("/challenges/{challenge_id}/files/{filename}/delete")
+def challenge_file_delete(
+    challenge_id: int,
+    filename: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    _: None = Depends(verify_csrf),
+):
+    """Delete ONE already-uploaded file from the edit form.
+
+    The name must be exactly its sanitized form (anything with a path
+    or odd characters 404s) — the edit page only ever links names from
+    `list_original_files`. Deleting the original means future
+    downloads of it 404; already-downloaded copies are unaffected.
+    """
+    from app.flag_engine import sanitize_filename
+
+    challenge = _get_challenge_or_404(db, challenge_id)
+    if sanitize_filename(filename) != filename or filename not in list_original_files(challenge.id):
+        raise HTTPException(status_code=404)
+    delete_uploaded_file(challenge.id, filename)
+    return RedirectResponse(f"/admin/challenges/{challenge.id}/edit", status_code=303)
+
+
+@router.post("/challenges/publish")
+def challenges_bulk_publish(
+    request: Request,
+    challenge_ids: list[int] = Form([]),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    _: None = Depends(verify_csrf),
+):
+    """Publish several drafts TOGETHER.
+
+    Every selected challenge gets the SAME `created_at` timestamp, so
+    on the board (which orders by first-upload time) they appear as
+    one group at the same moment instead of staggered. Already
+    published or deleted challenges are left exactly where they are.
+    """
+    now = utc_now()
+    published = 0
+    for challenge_id in dict.fromkeys(challenge_ids):
+        challenge = db.get(Challenge, challenge_id)
+        if challenge is None or challenge.is_deleted or challenge.is_published:
+            continue
+        challenge.is_published = True
+        challenge.created_at = now
+        published += 1
+    db.commit()
+    return RedirectResponse(
+        f"/admin/challenges?msg=Published {published} challenge(s) together.",
+        status_code=303,
+    )
 
 
 # --- bulk import (Phase 5, brief 9.1) -----------------------------------------
@@ -618,6 +700,48 @@ def user_ban(
     return RedirectResponse(
         f"/admin/users?msg={'Unbanned' if not user.is_banned else 'Banned'} {user.username}.",
         status_code=303,
+    )
+
+
+@router.post("/users/{user_id}/delete")
+def user_delete(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+    _: None = Depends(verify_csrf),
+):
+    """Permanently delete a user and everything that belongs to them
+    alone: solves, submissions, instances, hint unlocks, team
+    memberships and cheat-log rows (as offender or as flag owner).
+
+    Teams they captain are deleted too (a team without its captain
+    cannot be led). Their authored challenges and announcements stay
+    — those are platform content, not personal data. You cannot delete
+    yourself. This cannot be undone."""
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404)
+    if user.id == admin.id:
+        return RedirectResponse("/admin/users?msg=You cannot delete yourself.",
+                                status_code=303)
+    username = user.username
+    db.query(Solve).filter(Solve.user_id == user.id).delete()
+    db.query(Submission).filter(Submission.user_id == user.id).delete()
+    db.query(Instance).filter(Instance.user_id == user.id).delete()
+    db.query(HintUnlock).filter(HintUnlock.user_id == user.id).delete()
+    db.query(CheatLog).filter(
+        or_(CheatLog.user_id == user.id, CheatLog.flag_owner_id == user.id)
+    ).delete()
+    captained = db.query(Team).filter(Team.captain_id == user.id).all()
+    for team in captained:
+        db.query(TeamMembership).filter(TeamMembership.team_id == team.id).delete()
+        db.delete(team)
+    db.query(TeamMembership).filter(TeamMembership.user_id == user.id).delete()
+    db.delete(user)
+    db.commit()
+    return RedirectResponse(
+        f"/admin/users?msg=Deleted user {username}.", status_code=303,
     )
 
 
@@ -864,8 +988,64 @@ def submissions_list(
         request=request, name="admin/submissions.html",
         context={"rows": rows, "challenges": challenges, "users": users,
                  "user_summary": user_summary,
+                 "rejected_keys": {
+                     (s.user_id, s.challenge_id)
+                     for s in db.query(Solve).filter(Solve.is_rejected.is_(True)).all()
+                 },
                  "f_user": user, "f_challenge": challenge, "f_correct": correct},
     )
+
+
+def _solve_action_redirect(request: Request, return_to: str) -> RedirectResponse:
+    """Back to the submissions list the admin came from. Only a
+    same-site /admin/submissions URL is honoured — anything else (or
+    nothing) falls back to the plain list."""
+    if return_to.startswith("/admin/submissions"):
+        return RedirectResponse(return_to, status_code=303)
+    return RedirectResponse("/admin/submissions", status_code=303)
+
+
+@router.post("/solves/reject")
+def solve_reject(
+    request: Request,
+    user_id: int = Form(0),
+    challenge_id: int = Form(0),
+    return_to: str = Form(""),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    _: None = Depends(verify_csrf),
+):
+    """Reject a player's solve as suspected cheating.
+
+    The solve stops scoring ANYWHERE (scoreboard, board counts, first
+    blood, profile) and the challenge locks for that player — they
+    cannot submit it again. `points_awarded` is NOT overwritten, so
+    Recover restores the points exactly. The submission log itself is
+    untouched (audit trail)."""
+    solve = db.get(Solve, (user_id, challenge_id))
+    if solve is not None and not solve.is_rejected:
+        solve.is_rejected = True
+        db.commit()
+    return _solve_action_redirect(request, return_to)
+
+
+@router.post("/solves/recover")
+def solve_recover(
+    request: Request,
+    user_id: int = Form(0),
+    challenge_id: int = Form(0),
+    return_to: str = Form(""),
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+    _: None = Depends(verify_csrf),
+):
+    """Undo a rejection: the solve scores again and the challenge
+    unlocks for the player. Only a rejected solve can be recovered."""
+    solve = db.get(Solve, (user_id, challenge_id))
+    if solve is not None and solve.is_rejected:
+        solve.is_rejected = False
+        db.commit()
+    return _solve_action_redirect(request, return_to)
 
 
 @router.get("/cheat-log")
@@ -1194,6 +1374,7 @@ def export_challenges(
             "category": c.category,
             "description": c.description,
             "points": c.points,
+            "max_attempts": c.max_attempts,
             "flag_template": c.flag_template,
             "flag_sha256": c.flag_sha256,
             "hints": c.hints or [],
