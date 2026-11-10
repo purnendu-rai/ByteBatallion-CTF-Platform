@@ -10,6 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.create_admin import bootstrap_admin_from_env
 from app.database import SessionLocal, get_db, init_db
 from app.models import Page, load_public_config
 from app.routes import admin, auth, challenges, notifications, pages, scoreboard, settings, submit, teams
@@ -22,6 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent
 async def lifespan(_: FastAPI):
     # Dev bootstrap: create all tables from the models on startup.
     init_db()
+    # Hosts without shell access (Render free tier) create the first
+    # admin from BOOTSTRAP_ADMIN_* env vars, when set.
+    bootstrap_admin_from_env()
     yield
 
 

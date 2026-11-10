@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     debug: bool = False
     # dev | prod — "prod" enables the Secure flag on session cookies
     environment: str = "dev"
+    # First-admin bootstrap for hosts without shell access (e.g. Render
+    # free tier): when all three are set, the app creates this admin on
+    # startup if the username is not already taken. NEVER commit real
+    # values — set them in the host dashboard, not in render.yaml or .env.
+    bootstrap_admin_username: str | None = None
+    bootstrap_admin_email: str | None = None
+    bootstrap_admin_password: str | None = None
 
 
 @lru_cache

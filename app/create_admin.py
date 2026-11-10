@@ -13,6 +13,7 @@ change roles from the users page.
 
 import argparse
 import getpass
+import logging
 import os
 import re
 import sys
@@ -22,6 +23,8 @@ from sqlalchemy import func
 from app.database import SessionLocal, init_db
 from app.models import User
 from app.security import hash_password
+
+_logger = logging.getLogger("bytebatallion.bootstrap")
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,64}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -43,6 +46,45 @@ def create_admin(username: str, email: str, password: str) -> User:
         return admin
     finally:
         db.close()
+
+
+def bootstrap_admin_from_env(settings=None) -> User | None:
+    """Create the first admin from BOOTSTRAP_ADMIN_* env vars, if set.
+
+    For hosts without shell access (e.g. Render free tier) there is no way
+    to run this script, so the app creates the admin itself on startup
+    when all three settings are present. It NEVER overwrites an existing
+    user: if the username or email is already taken this is a no-op (which
+    also makes it safe to leave the vars set — on a host whose database
+    resets, the admin is simply recreated on the next boot). Invalid
+    values only log a warning; boot continues. The password is hashed
+    immediately and never logged.
+    """
+    from app.config import get_settings
+
+    s = settings if settings is not None else get_settings()
+    username = (s.bootstrap_admin_username or "").strip()
+    email = (s.bootstrap_admin_email or "").strip()
+    password = s.bootstrap_admin_password or ""
+    if not (username and email and password):
+        return None
+    if (not USERNAME_RE.fullmatch(username)
+            or not EMAIL_RE.fullmatch(email)
+            or len(password) < 8):
+        _logger.warning(
+            "BOOTSTRAP_ADMIN_* values invalid — skipping first-admin bootstrap.")
+        return None
+    db = SessionLocal()
+    try:
+        if db.query(User).filter(func.lower(User.username) == username.lower()).first():
+            return None
+        if db.query(User).filter(User.email == email.lower()).first():
+            return None
+    finally:
+        db.close()
+    admin = create_admin(username, email, password)
+    _logger.info("Bootstrap admin created: %s", admin.username)
+    return admin
 
 
 def main(argv: list[str] | None = None) -> int:

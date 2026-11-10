@@ -1,13 +1,17 @@
-# ByteBatallion — Render Blueprint (v3.0)
+# ByteBatallion — Render Blueprint (v3.1)
 # Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
-# Paid Starter uses the workspace's $50 credit (~$7.25/mo with the disk):
-# no 15-min sleep, 0.5 CPU, and the 1 GB persistent disk keeps the
-# SQLite database + challenge uploads alive across restarts/redeploys.
+# FREE tier (no card needed): sleeps after 15 min idle and the filesystem
+# is ephemeral, so the SQLite database resets on every restart/redeploy.
+# The first admin is created on boot from the BOOTSTRAP_ADMIN_* values
+# below (sync: false = Render asks for them in the dashboard, they are
+# NEVER stored in this file). Leaving them set re-creates the admin on
+# every boot, which is what keeps admin access working on the free tier.
+# To upgrade later: change plan to starter and add the disk back.
 services:
   - type: web
     name: bytebatallion
     runtime: python
-    plan: starter
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python run.py
     healthCheckPath: /
@@ -20,7 +24,9 @@ services:
         value: prod
       - key: SECRET_KEY
         generateValue: true
-    disk:
-      name: bytebatallion-data
-      mountPath: /opt/render/project/src/data
-      sizeGB: 1
+      - key: BOOTSTRAP_ADMIN_USERNAME
+        sync: false
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
