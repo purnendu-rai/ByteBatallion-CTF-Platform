@@ -98,9 +98,14 @@ def _add_missing_columns() -> None:
     the whole boot with "duplicate column". Each ALTER runs in its own
     transaction so a swallowed failure cannot poison the next one
     (Postgres aborts the whole transaction on a failed statement).
+    The swallow keys on the MESSAGE, not the exception type: plain
+    SQLite raises OperationalError, but Turso's libsql dialect raises
+    the same failure as `ValueError: Hrana: SQLite error: duplicate
+    column name: ...` — catching only OperationalError crashed the
+    live boot on 2026-11-10. Anything that is NOT a duplicate-column
+    error still raises.
     """
     from sqlalchemy import text
-    from sqlalchemy.exc import OperationalError
 
     wanted = {
         "challenges": {
@@ -118,7 +123,7 @@ def _add_missing_columns() -> None:
             try:
                 with engine.begin() as conn:
                     conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}"))
-            except OperationalError as exc:
+            except Exception as exc:  # noqa: BLE001 — message decides, see above
                 msg = str(exc).lower()
                 if "duplicate column" in msg or "already exists" in msg:
                     continue  # column is already there — nothing to do

@@ -416,3 +416,64 @@ def test_missing_columns_added_by_init_db():
     }
     assert "is_rejected" in cols["solves"]
     assert "max_attempts" in cols["challenges"]
+
+
+# --- 8. migration tolerates Turso's Hrana-style duplicate error ---------------
+# Regression for the 2026-11-10 live deploy failure: the libsql dialect
+# raises the duplicate-column failure as ValueError ("Hrana: SQLite
+# error: duplicate column name: ..."), NOT OperationalError, so catching
+# only OperationalError crashed the boot. The swallow keys on the
+# message, so any dialect's duplicate error is tolerated — but a
+# different error must still raise.
+
+
+class _FakeConn:
+    def __init__(self, fail_first_with):
+        self.calls = 0
+        self.fail_first_with = fail_first_with
+
+    def execute(self, stmt):
+        self.calls += 1
+        if self.calls == 1 and self.fail_first_with is not None:
+            raise self.fail_first_with
+
+
+class _FakeCtx:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def __enter__(self):
+        return self.conn
+
+    def __exit__(self, *exc):
+        return False
+
+
+class _FakeEngine:
+    def __init__(self, fail_first_with):
+        self.conn = _FakeConn(fail_first_with)
+
+    def begin(self):
+        return _FakeCtx(self.conn)
+
+
+def test_migration_tolerates_hrana_style_duplicate_error(monkeypatch):
+    import app.database as dbmod
+
+    fake = _FakeEngine(
+        ValueError("Hrana: SQLite error: duplicate column name: flag_sha256")
+    )
+    monkeypatch.setattr(dbmod, "engine", fake)
+    dbmod._add_missing_columns()  # must not raise
+    assert fake.conn.calls == 3  # all three ALTERs still attempted
+
+
+def test_migration_reraises_non_duplicate_errors(monkeypatch):
+    import app.database as dbmod
+
+    fake = _FakeEngine(
+        ValueError("Hrana: SQLite error: no such table: challenges")
+    )
+    monkeypatch.setattr(dbmod, "engine", fake)
+    with pytest.raises(ValueError, match="no such table"):
+        dbmod._add_missing_columns()
