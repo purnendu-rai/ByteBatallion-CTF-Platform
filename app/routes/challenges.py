@@ -19,7 +19,6 @@ from app.database import get_db
 from app.flag_engine import list_original_files
 from app.storage import get_storage
 from app.models import (
-    CHALLENGE_CATEGORIES,
     Challenge,
     HintUnlock,
     Solve,
@@ -30,7 +29,7 @@ from app.models import (
 from app.security import login_redirect, require_user, verify_csrf
 
 router = APIRouter(prefix="/challenges", tags=["challenges"])
-from app.timeutil import format_ist
+from app.timeutil import format_ist, to_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
 templates.env.filters["ist"] = format_ist
 
@@ -39,8 +38,12 @@ templates.env.filters["ist"] = format_ist
 def board(request: Request, user=Depends(require_user), db: Session = Depends(get_db)):
     """Challenge board, grouped by category (published only).
 
-    Before the CTF starts, players see a countdown instead of the cards;
-    after it ends a banner notes that submissions are closed (Phase 5)."""
+    Order is upload order, not points or a fixed category list: the
+    section whose FIRST challenge was uploaded earliest sits on top,
+    and inside a section the oldest challenge is the leftmost card.
+    Before the CTF starts, players see a countdown instead of the
+    cards; after it ends a banner notes that submissions are closed
+    (Phase 5)."""
     cfg = ctf_state(db)
     is_admin = user.role == "admin"
     show_cards = cfg["phase"] != "before" or is_admin
@@ -59,7 +62,7 @@ def board(request: Request, user=Depends(require_user), db: Session = Depends(ge
             db.query(Challenge, func.count(Solve.user_id))
             .outerjoin(Solve, Solve.challenge_id == Challenge.id)
             .filter(Challenge.is_published.is_(True), Challenge.is_deleted.is_(False))
-            .order_by(Challenge.points)
+            .order_by(Challenge.created_at, Challenge.id)
             .group_by(Challenge.id)
             .all()
         )
@@ -68,9 +71,13 @@ def board(request: Request, user=Depends(require_user), db: Session = Depends(ge
             by_category.setdefault(challenge.category, []).append(
                 {"challenge": challenge, "solves": solve_count}
             )
+        # Sections in first-upload order: a category sits where its
+        # earliest challenge sits (to_ist normalises naive timestamps
+        # to UTC first, so the comparison never mixes naive/aware).
         groups = sorted(
             by_category.items(),
-            key=lambda kv: (CHALLENGE_CATEGORIES.index(kv[0]) if kv[0] in CHALLENGE_CATEGORIES else 99, kv[0]),
+            key=lambda kv: (to_ist(kv[1][0]["challenge"].created_at),
+                            kv[1][0]["challenge"].id),
         )
         # First blood: earliest solve per challenge, shown on the card (brief 10).
         earliest = (
