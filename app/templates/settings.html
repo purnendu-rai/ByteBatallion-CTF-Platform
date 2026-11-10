@@ -4,7 +4,7 @@
 <div class="settings-container">
   <div class="settings-header">
     <div class="terminal-tag">// USER_PREFERENCES &amp; SECURITY</div>
-    <h1 class="page-title cyber-title">[05] // Account Settings</h1>
+    <h1 class="page-title cyber-title">Account Settings</h1>
     <p class="tagline">Configure your credentials and security settings.</p>
   </div>
 
@@ -34,7 +34,7 @@
           </div>
           <div class="detail-row">
             <span class="detail-key">Registered On</span>
-            <span class="detail-val">{{ user.created_at.strftime("%d %b %Y, %H:%M UTC") }}</span>
+            <span class="detail-val">{{ user.created_at | ist("%d %b %Y, %H:%M") }} IST</span>
           </div>
           <div class="detail-row">
             <span class="detail-key">Account Status</span>

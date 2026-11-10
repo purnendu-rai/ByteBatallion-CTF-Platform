@@ -24,7 +24,9 @@ from app.models import Announcement, User
 from app.security import require_user
 
 router = APIRouter(tags=["notifications"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 
 @router.get("/notifications")

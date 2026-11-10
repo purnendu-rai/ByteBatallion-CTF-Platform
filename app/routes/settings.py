@@ -13,7 +13,9 @@ from app.models import User
 from app.security import hash_password, require_user, verify_csrf, verify_password
 
 router = APIRouter(tags=["settings"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 
 @router.get("/settings")

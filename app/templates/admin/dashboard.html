@@ -26,11 +26,11 @@
 
   <h2>Recent submissions</h2>
   <table class="table">
-    <thead><tr><th>Time (UTC)</th><th>User</th><th>Challenge</th><th>Result</th></tr></thead>
+    <thead><tr><th>Time (IST)</th><th>User</th><th>Challenge</th><th>Result</th></tr></thead>
     <tbody>
     {% for s, username, title in recent %}
       <tr>
-        <td>{{ s.submitted_at.strftime("%d %b %H:%M") }}</td>
+        <td>{{ s.submitted_at | ist("%d %b %H:%M") }}</td>
         <td>{{ username }}</td>
         <td>{{ title }}</td>
         <td>{% if s.is_correct %}<span class="badge badge-ok">correct</span>{% else %}<span class="badge">incorrect</span>{% endif %}</td>

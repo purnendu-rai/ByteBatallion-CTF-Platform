@@ -30,7 +30,9 @@ from app.models import (
 from app.security import require_user
 
 router = APIRouter(tags=["scoreboard"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 _DT_MAX = datetime.datetime.max  # naive; only used as an ordering sentinel
 
@@ -224,7 +226,7 @@ def profile(
             "title": ch.title,
             "category": ch.category,
             "points": solve.points_awarded,
-            "time_str": solve.solved_at.strftime("%B %d, %Y at %I:%M %p"),
+            "time_str": format_ist(solve.solved_at, "%B %d, %Y at %I:%M %p"),
             "solved_at": solve.solved_at,
         }
         for solve, ch in solves_query

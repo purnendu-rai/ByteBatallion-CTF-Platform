@@ -30,7 +30,9 @@ from app.models import (
 from app.security import login_redirect, require_user, verify_csrf
 
 router = APIRouter(prefix="/challenges", tags=["challenges"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 
 @router.get("")

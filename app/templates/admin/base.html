@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 {% set path = request.url.path %}
-<p class="terminal-tag">[04] // Admin</p>
+<p class="terminal-tag">Admin</p>
 <div class="admin-nav">
   <a href="/admin" class="{{ 'active' if path == '/admin' }}">Dashboard</a>
   <a href="/admin/challenges" class="{{ 'active' if path.startswith('/admin/challenges') }}">Challenges</a>

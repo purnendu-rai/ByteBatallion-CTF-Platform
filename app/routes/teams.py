@@ -27,7 +27,9 @@ from app.routes.scoreboard import player_team, ranked_teams
 from app.security import require_user, verify_csrf
 
 router = APIRouter(prefix="/teams", tags=["teams"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 TEAM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 TEAM_CODE_LEN = 8

@@ -26,7 +26,9 @@ from app.models import Challenge, Solve, Submission, ctf_state
 from app.security import require_user, submission_rate_limiter, verify_csrf
 
 router = APIRouter(prefix="/submit", tags=["submit"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 
 @router.post("/{challenge_id}")

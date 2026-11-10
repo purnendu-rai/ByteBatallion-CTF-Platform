@@ -41,17 +41,17 @@
     <strong>{{ user_summary.username }}</strong> — {{ user_summary.total }} submissions
     · {{ user_summary.correct }} correct · {{ user_summary.incorrect }} incorrect
     · {{ user_summary.challenges }} challenges attempted
-    {% if user_summary.first %}· first {{ user_summary.first.strftime("%d %b %H:%M") }} UTC{% endif %}
-    {% if user_summary.last %}· last {{ user_summary.last.strftime("%d %b %H:%M") }} UTC{% endif %}
+    {% if user_summary.first %}· first {{ user_summary.first | ist("%d %b %H:%M") }} IST{% endif %}
+    {% if user_summary.last %}· last {{ user_summary.last | ist("%d %b %H:%M") }} IST{% endif %}
     · <a href="/admin/submissions/export.pdf?user={{ user_summary.username|urlencode }}">Export this user's PDF</a>
   </p>
   {% endif %}
   <table class="table">
-    <thead><tr><th>Time (UTC)</th><th>User</th><th>Challenge</th><th>Submitted (hash)</th><th>Result</th></tr></thead>
+    <thead><tr><th>Time (IST)</th><th>User</th><th>Challenge</th><th>Submitted (hash)</th><th>Result</th></tr></thead>
     <tbody>
     {% for s, username, title in rows %}
       <tr>
-        <td>{{ s.submitted_at.strftime("%d %b %H:%M:%S") }}</td>
+        <td>{{ s.submitted_at | ist("%d %b %H:%M:%S") }}</td>
         <td>{{ username }}</td>
         <td>{{ title }}</td>
         <td><code>{{ s.submitted_flag_hash[:12] }}&hellip;</code></td>

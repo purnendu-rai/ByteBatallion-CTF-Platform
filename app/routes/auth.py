@@ -32,7 +32,9 @@ from app.security import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,64}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

@@ -10,6 +10,7 @@ from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from app.database import Base, SessionLocal
+from app.timeutil import IST
 
 
 def utc_now() -> datetime:
@@ -236,8 +237,8 @@ def _parse_config_dt(raw: str) -> datetime | None:
     except ValueError:
         return None
     if dt.tzinfo is None:
-        # datetime-local inputs are naive — the admin enters UTC times.
-        dt = dt.replace(tzinfo=timezone.utc)
+        # datetime-local inputs are naive — the admin enters IST times.
+        dt = dt.replace(tzinfo=IST)
     return dt
 
 

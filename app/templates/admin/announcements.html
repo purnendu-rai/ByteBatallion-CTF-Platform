@@ -23,7 +23,7 @@
     <div class="announcement">
       <h3>{{ a.title }}</h3>
       <p>{{ a.body }}</p>
-      <span class="muted">{{ a.created_at.strftime("%d %b %Y %H:%M") }} UTC</span>
+      <span class="muted">{{ a.created_at | ist("%d %b %Y %H:%M") }} IST</span>
       <div class="actions" style="margin-top: 8px">
         <a class="btn btn-small" href="/admin/announcements/{{ a.id }}/edit">Edit</a>
         <form method="post" action="/admin/announcements/{{ a.id }}/delete" class="inline-form">

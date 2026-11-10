@@ -23,7 +23,7 @@
   <p class="hero-prompt hero-reveal">./bytebatallion --capture-the-flag</p>
   <p class="tagline hero-reveal">&gt; Be smart enough to get the flag.</p>
   {% if cfg.phase == "before" %}
-    <p class="notice hero-reveal">Starts in <span class="countdown" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start.strftime("%d %b %Y %H:%M UTC") }}</span></p>
+    <p class="notice hero-reveal">Starts in <span class="countdown" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start | ist("%d %b %Y %H:%M") }} IST</span></p>
   {% elif cfg.phase == "ended" %}
     <p class="notice hero-reveal">This CTF has ended. Thanks for playing!</p>
   {% endif %}

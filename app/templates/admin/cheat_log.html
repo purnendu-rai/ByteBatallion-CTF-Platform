@@ -5,11 +5,11 @@
   <h1 class="page-title">Cheat log</h1>
   <p class="hint-text">Players who submitted a flag belonging to ANOTHER user. The player was only ever told "Incorrect".</p>
   <table class="table">
-    <thead><tr><th>Detected (UTC)</th><th>Offender</th><th>Flag owner</th><th>Challenge</th><th>Source IP</th><th>Hash</th><th>Action</th></tr></thead>
+    <thead><tr><th>Detected (IST)</th><th>Offender</th><th>Flag owner</th><th>Challenge</th><th>Source IP</th><th>Hash</th><th>Action</th></tr></thead>
     <tbody>
     {% for c, off, own, title in rows %}
       <tr>
-        <td>{{ c.detected_at.strftime("%d %b %H:%M:%S") }}</td>
+        <td>{{ c.detected_at | ist("%d %b %H:%M:%S") }}</td>
         <td>{{ off.username }}{% if off.is_banned %} <span class="badge badge-danger">banned</span>{% endif %}</td>
         <td>{{ own.username }}</td>
         <td>{{ title }}</td>

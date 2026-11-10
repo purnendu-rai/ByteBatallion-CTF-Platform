@@ -14,7 +14,9 @@ from app.database import get_db
 from app.models import Page
 
 router = APIRouter(prefix="/pages", tags=["pages"])
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 
 @router.get("/{slug}")

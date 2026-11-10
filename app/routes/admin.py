@@ -47,7 +47,9 @@ from app.routes.scoreboard import ranked_players
 from app.security import hash_password, one_time_passwords, require_admin, verify_csrf
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+from app.timeutil import IST, format_ist, to_ist
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parents[1] / "templates"))
+templates.env.filters["ist"] = format_ist
 
 VALID_ROLES = ("player", "author", "admin")
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -76,12 +78,13 @@ def dashboard(
         "submissions": db.query(func.count()).select_from(Submission).scalar(),
     }
     # Solves per day for the last 14 days (portable range filter, no
-    # SQL-dialect date functions).
-    today = datetime.now(timezone.utc).date()
+    # SQL-dialect date functions). Days are IST days, like every other
+    # time the site shows.
+    today = datetime.now(IST).date()
     day_counts = []
     for i in range(13, -1, -1):
         day = today - timedelta(days=i)
-        day_start = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+        day_start = datetime(day.year, day.month, day.day, tzinfo=IST)
         count = (
             db.query(func.count()).select_from(Solve)
             .filter(Solve.solved_at >= day_start,
@@ -632,7 +635,7 @@ def user_reset_password(
     new_password = _generate_password()
     user.password_hash = hash_password(new_password)
     db.commit()
-    # v0.1: the password NEVER travels in the URL. Only a random,
+    # v3.0: the password NEVER travels in the URL. Only a random,
     # single-use token does (OneTimePasswordStore in app/security.py);
     # the users page pops the password once and a refresh shows nothing.
     # The old ?new_password=... redirect leaked the password into
@@ -734,7 +737,7 @@ def submissions_export_pdf(
 
     story = [
         _p("BYTE_BATALLION_CTF_PLATFORM — Submission Log", heading),
-        _p(f"Generated at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC", small),
+        _p(f"Generated at {to_ist(datetime.now(timezone.utc)).strftime('%Y-%m-%d %H:%M:%S')} IST", small),
         Spacer(1, 12),
     ]
     if user or challenge or correct:
@@ -775,11 +778,11 @@ def submissions_export_pdf(
             f"Note: showing the latest {EXPORT_PDF_MAX_ROWS} of {total} submissions.",
             small,
         ))
-    log_data = [[_raw("<b>Time (UTC)</b>"), _raw("<b>User</b>"), _raw("<b>Challenge</b>"),
+    log_data = [[_raw("<b>Time (IST)</b>"), _raw("<b>User</b>"), _raw("<b>Challenge</b>"),
                  _raw("<b>Hash (first 12)</b>"), _raw("<b>Result</b>")]]
     for s, username, title in rows:
         log_data.append([
-            _p(s.submitted_at.strftime("%Y-%m-%d %H:%M:%S") if s.submitted_at else ""),
+            _p(format_ist(s.submitted_at, "%Y-%m-%d %H:%M:%S") if s.submitted_at else ""),
             _p(username),
             _p(title),
             _p((s.submitted_flag_hash or "")[:12]),

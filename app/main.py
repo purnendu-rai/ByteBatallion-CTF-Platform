@@ -31,7 +31,9 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="BYTE_BATALLION_CTF_PLATFORM - CTF Platform", lifespan=lifespan)
 
+from app.timeutil import format_ist
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+templates.env.filters["ist"] = format_ist
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
 # Routers are filled in phase by phase (brief, Section 4).

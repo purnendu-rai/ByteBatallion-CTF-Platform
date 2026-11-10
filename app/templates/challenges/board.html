@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Challenges — {{ request.state.cfg.name }}{% endblock %}
 {% block content %}
-<h1 class="page-title">[01] // Challenges</h1>
+<h1 class="page-title">Challenges</h1>
 
 {% if cfg.phase == "before" %}
   <div class="banner-warn">
     <p style="margin: 0 0 6px">The CTF has not started yet{% if show_cards %} (players see this countdown){% endif %}.</p>
-    <p style="margin: 0" class="countdown-big" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start.strftime("%d %b %Y %H:%M UTC") }}</p>
+    <p style="margin: 0" class="countdown-big" data-countdown-to="{{ cfg.start.isoformat() }}">{{ cfg.start | ist("%d %b %Y %H:%M") }} IST</p>
   </div>
 {% elif cfg.phase == "ended" %}
   <div class="banner-warn">The CTF has ended &mdash; submissions are closed. Scores are final.</div>
