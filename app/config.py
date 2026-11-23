@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     b2_key_id: str | None = None
     b2_application_key: str | None = None
     b2_endpoint: str | None = None
+    # Transactional email — v3.5. Brevo HTTPS API (Render free blocks
+    # outbound SMTP ports 25/465/587, so SMTP cannot work there).
+    # BREVO_API_KEY is the v3 API key (starts with xkeysib-). EMAIL_FROM
+    # is the verified Brevo sender — a plain email address works, no own
+    # domain needed. PUBLIC_URL is the base URL baked into email links.
+    # NEVER commit real values — set them in the host dashboard.
+    brevo_api_key: str | None = None
+    email_from: str = "ByteBatallion <iampurnendurai@gmail.com>"
+    public_url: str = "https://bytebatallion.onrender.com"
 
 
 @lru_cache

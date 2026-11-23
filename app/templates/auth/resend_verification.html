@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Resend verification email — BYTE_BATALLION_CTF_PLATFORM{% endblock %}
+{% block content %}
+<section class="card auth-card">
+  <h1>Resend verification email</h1>
+  <p class="muted">Enter the email you registered with and we will send you a new verification link (valid for 24 hours).</p>
+  {% if msg %}
+    <p class="msg-ok">{{ msg }}</p>
+  {% endif %}
+  {% if error %}
+    <ul class="errors"><li>{{ error }}</li></ul>
+  {% endif %}
+  <form method="post" action="/auth/resend-verification">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Email
+      <input type="email" name="email" required maxlength="255" value="{{ email or '' }}">
+    </label>
+    <button type="submit">Resend verification email</button>
+  </form>
+  <p class="muted"><a href="/auth/login">Back to log in</a></p>
+</section>
+{% endblock %}

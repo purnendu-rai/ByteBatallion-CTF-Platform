@@ -93,6 +93,77 @@ def load_user_from_cookie(request: Request) -> User | None:
         db.close()
 
 
+# --- email verification + password-reset tokens (v3.5) ---------------------
+#
+# Signed with the same SECRET_KEY as sessions but a different salt, so a
+# session cookie can never be replayed as an email token and vice versa.
+# Verification links live 24h; reset links 1h AND are bound to the
+# current password hash — once the password changes, every older reset
+# link stops working, so a leaked link is single-use in practice.
+
+import hashlib  # noqa: E402
+
+_email_serializer = URLSafeTimedSerializer(settings.secret_key, salt="bytebatallion-email")
+EMAIL_VERIFICATION_MAX_AGE = 24 * 60 * 60  # 24 hours
+PASSWORD_RESET_MAX_AGE = 60 * 60  # 1 hour
+
+
+def create_email_verification_token(user_id: int, email: str) -> str:
+    return _email_serializer.dumps({"uid": user_id, "email": email, "kind": "verify"})
+
+
+def read_email_verification_token(token: str) -> tuple[int, str] | None:
+    try:
+        data = _email_serializer.loads(token, max_age=EMAIL_VERIFICATION_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(data, dict) or data.get("kind") != "verify":
+        return None
+    return int(data["uid"]), str(data["email"])
+
+
+def _password_fingerprint(password_hash: str) -> str:
+    """Short non-reversible fingerprint of the current password hash."""
+    return hashlib.sha256(password_hash.encode()).hexdigest()[:16]
+
+
+def create_password_reset_token(user: User) -> str:
+    return _email_serializer.dumps({
+        "uid": user.id, "email": user.email, "kind": "reset",
+        "pwd": _password_fingerprint(user.password_hash),
+    })
+
+
+def read_password_reset_token(token: str, user: User) -> bool:
+    """True only when the token matches this user AND the password has
+    not changed since the token was issued."""
+    try:
+        data = _email_serializer.loads(token, max_age=PASSWORD_RESET_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return False
+    if not isinstance(data, dict) or data.get("kind") != "reset":
+        return False
+    return (
+        int(data.get("uid", -1)) == user.id
+        and str(data.get("email", "")) == user.email
+        and str(data.get("pwd", "")) == _password_fingerprint(user.password_hash)
+    )
+
+
+def read_password_reset_uid(token: str) -> int | None:
+    """uid from a structurally valid reset token (signature, expiry and
+    kind checked). The caller must still call
+    read_password_reset_token(token, user) to confirm the token matches
+    that user and the password is unchanged."""
+    try:
+        data = _email_serializer.loads(token, max_age=PASSWORD_RESET_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    if not isinstance(data, dict) or data.get("kind") != "reset":
+        return None
+    return int(data["uid"])
+
+
 # --- access-control dependencies ------------------------------------------
 
 def _safe_next_value(value: str | None) -> str | None:

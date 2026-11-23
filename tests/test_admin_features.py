@@ -465,7 +465,7 @@ def test_migration_tolerates_hrana_style_duplicate_error(monkeypatch):
     )
     monkeypatch.setattr(dbmod, "engine", fake)
     dbmod._add_missing_columns()  # must not raise
-    assert fake.conn.calls == 3  # all three ALTERs still attempted
+    assert fake.conn.calls == 4  # all four ALTERs still attempted (v3.5 adds users.is_verified)
 
 
 def test_migration_reraises_non_duplicate_errors(monkeypatch):

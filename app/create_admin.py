@@ -40,7 +40,8 @@ def create_admin(username: str, email: str, password: str) -> User:
         if db.query(User).filter(User.email == email.lower()).first():
             raise SystemExit(f"Error: email '{email}' is already registered.")
         admin = User(username=username, email=email.lower(),
-                     password_hash=hash_password(password), role="admin")
+                     password_hash=hash_password(password), role="admin",
+                     is_verified=True)
         db.add(admin)
         db.commit()
         return admin

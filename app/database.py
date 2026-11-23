@@ -117,6 +117,11 @@ def _add_missing_columns() -> None:
         # `is_rejected IS FALSE` would then wrongly exclude every
         # solve made before this column existed.
         "solves": {"is_rejected": "BOOLEAN NOT NULL DEFAULT 0"},
+        # Email verification (v3.5): DEFAULT 1 grandfathers every
+        # account created before this column existed (incl. the admin)
+        # as verified, so nobody gets locked out by the new login
+        # check; new signups get False from the ORM default instead.
+        "users": {"is_verified": "BOOLEAN NOT NULL DEFAULT 1"},
     }
     for table, columns in wanted.items():
         for col, ddl in columns.items():

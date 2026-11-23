@@ -29,6 +29,13 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(16), default="player")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     is_banned: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Email verification — v3.5. New registrations start unverified and
+    # cannot log in until they click the verification link. Accounts that
+    # existed before v3.5 are grandfathered verified by the migration in
+    # database._add_missing_columns (DEFAULT 1 on the ALTER), and the
+    # admin bootstrap creates verified admins; the ORM default below
+    # (False) is what new signups get.
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 # Fixed category list (brief, Section 5)

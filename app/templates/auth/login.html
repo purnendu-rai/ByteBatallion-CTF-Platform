@@ -3,6 +3,9 @@
 {% block content %}
 <section class="card auth-card">
   <h1>Log in</h1>
+  {% if msg %}
+    <p class="msg-ok">{{ msg }}</p>
+  {% endif %}
   {% if error %}
     <ul class="errors"><li>{{ error }}</li></ul>
   {% endif %}
@@ -18,5 +21,6 @@
     <button type="submit">Log in</button>
   </form>
   <p class="muted">No account yet? <a href="/auth/register">Register</a></p>
+  <p class="muted"><a href="/auth/forgot-password">Forgot your password?</a> · <a href="/auth/resend-verification">Resend verification email</a></p>
 </section>
 {% endblock %}

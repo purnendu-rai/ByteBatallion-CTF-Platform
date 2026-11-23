@@ -56,3 +56,16 @@ services:
         sync: false
       - key: B2_ENDPOINT
         sync: false
+      # Transactional email — v3.5. Brevo HTTPS API (Render free blocks
+      # outbound SMTP ports 25/465/587, so SMTP cannot work there).
+      # BREVO_API_KEY is the v3 API key (starts with xkeysib-) from the
+      # Brevo dashboard; EMAIL_FROM is the verified Brevo sender;
+      # PUBLIC_URL is the base URL baked into verification/reset links.
+      # All three are sync: false — real values live only in the Render
+      # dashboard, never in this file or the repo.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
