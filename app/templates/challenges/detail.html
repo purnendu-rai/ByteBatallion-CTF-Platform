@@ -14,7 +14,7 @@
       {% if is_admin %}<a class="btn btn-small" href="/admin/challenges/{{ challenge.id }}/edit">Edit</a>{% endif %}
     </div>
   </div>
-  <div class="detail-desc">{{ challenge.description }}</div>
+  <div class="detail-desc">{{ challenge.description | urlize(target="_blank", rel="noopener") }}</div>
 
   {% if hints %}
     <h2 id="hints">Hints</h2>
