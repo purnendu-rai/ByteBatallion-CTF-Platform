@@ -14,7 +14,12 @@ from app.create_admin import bootstrap_admin_from_env
 from app.database import SessionLocal, get_db, init_db
 from app.models import Page, load_public_config
 from app.routes import admin, auth, challenges, notifications, pages, scoreboard, settings, submit, teams
-from app.security import CSRF_COOKIE, SESSION_MAX_AGE, load_user_from_cookie
+from app.security import (
+    CSRF_COOKIE,
+    SESSION_MAX_AGE,
+    load_session_from_cookie,
+    load_user_from_cookie,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -57,6 +62,9 @@ async def session_and_csrf_middleware(request: Request, call_next):
       the two match (security.verify_csrf).
     """
     request.state.user = load_user_from_cookie(request)
+    # v3.6: the live session row (if any) — routes use it to revoke
+    # exactly this browser's session on logout / password change.
+    request.state.session = load_session_from_cookie(request)
     # Platform config snapshot (name, CTF phase) for the templates.
     request.state.cfg = load_public_config()
 
@@ -77,13 +85,20 @@ async def session_and_csrf_middleware(request: Request, call_next):
 
     response = await call_next(request)
 
-    # Back-button freshness: a logged-in user hitting Back must see the
-    # current state (e.g. a just-solved challenge already green), never a
-    # stale cached page. Static assets and JSON APIs are left alone.
-    if request.state.user and not request.url.path.startswith("/static"):
+    # Freshness + no cross-user leakage (v3.6): every non-static HTML
+    # response is no-store, logged in or not — the old code only set
+    # this for logged-in users, so a logged-out page (or a page served
+    # right after logout) could sit in a browser / proxy cache and be
+    # shown to the next person on that computer as if they were still
+    # signed in. Vary: Cookie tells any cache the response depends on
+    # the session cookie. JSON APIs are left alone (public, cacheable
+    # data like the scoreboard feed) — same as before.
+    if not request.url.path.startswith("/static"):
         content_type = response.headers.get("content-type", "")
         if "application/json" not in content_type:
-            response.headers["Cache-Control"] = "no-store, no-cache"
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Vary"] = "Cookie"
 
     if request.cookies.get(CSRF_COOKIE) != token:
         response.set_cookie(

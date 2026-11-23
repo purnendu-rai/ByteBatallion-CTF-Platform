@@ -10,7 +10,14 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
-from app.security import hash_password, require_user, verify_csrf, verify_password
+from app.security import (
+    get_current_session,
+    hash_password,
+    require_user,
+    revoke_user_sessions,
+    verify_csrf,
+    verify_password,
+)
 
 router = APIRouter(tags=["settings"])
 from app.timeutil import format_ist
@@ -78,6 +85,13 @@ def change_password(
     if db_user:
         db_user.password_hash = hash_password(new_password)
         db.commit()
+
+    # v3.6: changing the password kills every OTHER session (other
+    # browsers / devices, and any stolen cookie) — this browser stays
+    # signed in.
+    current = get_current_session(request)
+    token = request.cookies.get("session", "") if current is not None else None
+    revoke_user_sessions(db, user.id, except_token=token)
 
     return RedirectResponse(
         "/settings?msg=" + quote("Your password has been updated successfully.", safe=""),

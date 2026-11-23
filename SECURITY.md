@@ -31,9 +31,24 @@ engineering of players or admins.
 3. **CSRF — no:** double-submit cookie; `verify_csrf` is a dependency
    on every state-changing POST (auth, admin, challenges, submissions,
    settings, teams). No GET route mutates state.
-4. **Sessions:** the cookie holds only a signed user id
-   (`HttpOnly`, `SameSite=lax`, `Secure` in prod). Bans re-check the
-   user row on every request, so they take effect immediately.
+4. **Sessions (v3.6 — fixed 2026-11-23):** server-side sessions in
+   the DB (`user_sessions` table). The cookie holds only a random
+   opaque token (`HttpOnly`, `SameSite=lax`, `Secure` in prod); only
+   its SHA-256 is stored, so a DB leak yields no usable cookies.
+   Logout, password change/reset, ban and admin password reset REVOKE
+   the session row, so a replayed or leftover cookie is dead at once;
+   logging in as a different user from the same browser revokes the
+   session that browser was presenting. The old stateless signed-uid
+   cookie stayed valid for 7 days whatever happened — logout only
+   deleted it in that one browser (and in prod the delete lacked the
+   Secure flag, so some browsers kept it) — which is how a shared
+   computer silently signed the next person in as the last user.
+   Deploying v3.6 invalidates every pre-existing session: everyone
+   logs in once again. HTML responses are `no-store` + `Vary: Cookie`
+   whether logged in or not, so no cached page leaks across users;
+   JSON APIs stay cacheable. Settings has "Log out of all other
+   devices". Bans re-check the user row on every request, so they take
+   effect immediately.
 5. **Headers:** every response carries a strict CSP, `X-Frame-Options:
    DENY`, `nosniff`, a referrer policy and a permissions policy; HSTS
    only in prod (never on plain-http dev).

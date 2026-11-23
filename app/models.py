@@ -38,6 +38,46 @@ class User(Base):
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
+class UserSession(Base):
+    """One server-side login session (v3.6 — fixes the shared-browser
+    auto-login bug).
+
+    The old design was a stateless signed cookie holding just `{"uid": n}`:
+    it stayed valid for 7 days no matter what — logout only deleted the
+    cookie in THAT browser, a password change / ban / admin reset did not
+    kill it, and on a shared computer the last user stayed logged in for
+    anyone who opened the site next. Sessions are now rows in the DB:
+
+    - the cookie holds only a random opaque token (no user id inside,
+      nothing to decode or forge — `secrets.token_urlsafe(32)`);
+    - only the SHA-256 of the token is stored, so a DB leak alone does
+      not yield usable session cookies;
+    - logout, password change, ban and admin password reset REVOKE the
+      row, so a replayed / leftover cookie is dead immediately;
+    - logging in as a different user from the same browser revokes the
+      session that browser was presenting, so the previous user can
+      never "come back" on the next visit;
+    - rows live in Turso with everything else, so sessions still survive
+      a server restart / Render sleep — only a real logout kills them.
+    """
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # SHA-256 hex of the opaque token in the cookie — never the token itself.
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # Throttled activity stamp (updated at most once per 5 minutes).
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Context only — shown nowhere to other users, never used to reject
+    # a request (IPs change on mobile / behind Render's proxy).
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
 # Fixed category list (brief, Section 5)
 CHALLENGE_CATEGORIES = ["web", "crypto", "forensics", "pwn", "rev", "osint", "misc"]
 

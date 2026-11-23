@@ -44,13 +44,20 @@ from app.models import (
     Team,
     TeamMembership,
     User,
+    UserSession,
     ctf_state,
     normalized_hints,
     set_config,
     utc_now,
 )
 from app.routes.scoreboard import ranked_players
-from app.security import hash_password, one_time_passwords, require_admin, verify_csrf
+from app.security import (
+    hash_password,
+    one_time_passwords,
+    require_admin,
+    revoke_user_sessions,
+    verify_csrf,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 from app.timeutil import IST, format_ist, to_ist
@@ -697,6 +704,10 @@ def user_ban(
     user.is_banned = not user.is_banned
     db.commit()
     # The per-request user reload (middleware) kills banned sessions at once.
+    # v3.6: a ban also REVOKES the rows, so no leftover cookie survives
+    # even if the ban is later lifted — the user must log in again.
+    if user.is_banned:
+        revoke_user_sessions(db, user.id)
     return RedirectResponse(
         f"/admin/users?msg={'Unbanned' if not user.is_banned else 'Banned'} {user.username}.",
         status_code=303,
@@ -738,6 +749,7 @@ def user_delete(
         db.query(TeamMembership).filter(TeamMembership.team_id == team.id).delete()
         db.delete(team)
     db.query(TeamMembership).filter(TeamMembership.user_id == user.id).delete()
+    db.query(UserSession).filter(UserSession.user_id == user.id).delete()
     db.delete(user)
     db.commit()
     return RedirectResponse(
@@ -759,6 +771,9 @@ def user_reset_password(
     new_password = _generate_password()
     user.password_hash = hash_password(new_password)
     db.commit()
+    # v3.6: an admin password reset kills the user's live sessions —
+    # a stolen cookie must not survive the reset.
+    revoke_user_sessions(db, user.id)
     # v3.0: the password NEVER travels in the URL. Only a random,
     # single-use token does (OneTimePasswordStore in app/security.py);
     # the users page pops the password once and a refresh shows nothing.

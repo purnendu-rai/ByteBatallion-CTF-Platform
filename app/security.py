@@ -21,7 +21,7 @@ from urllib.parse import quote
 
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import User
+from app.models import User, UserSession
 
 settings = get_settings()
 
@@ -51,46 +51,164 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-# --- signed session cookies (itsdangerous) --------------------------------
+# --- server-side sessions (v3.6) -------------------------------------------
 #
-# The cookie holds ONLY a signed user id — no plaintext credentials and
-# no server-side session store, so sessions survive a server restart.
-# The user row is re-loaded from the DB on every request (see middleware
-# in main.py), so bans take effect immediately.
+# v3.5 and earlier used a STATELESS signed cookie holding just
+# `{"uid": n}`. That was the shared-browser bug: the token stayed valid
+# for 7 days whatever happened — logout only deleted the cookie in that
+# one browser (and in prod the delete even lacked the Secure flag, so
+# some browsers kept the cookie), a password change never killed it,
+# and anyone opening the site on a computer where someone else had
+# logged in was silently signed in AS that person. There was also no
+# way to revoke a session at all.
+#
+# Sessions are now DB rows (models.UserSession, Turso — so they still
+# survive a server restart / Render sleep). The cookie holds only a
+# random opaque token; only its SHA-256 is stored. Logout, password
+# change, ban and admin reset REVOKE the row, and a replayed or
+# leftover cookie is dead immediately. Old stateless cookies stop
+# working on deploy — every user logs in once again, which is the
+# fix itself, not a side effect.
 
-_session_serializer = URLSafeTimedSerializer(settings.secret_key, salt="bytebatallion-session")
+import hashlib  # noqa: E402
 
 
-def create_session_token(user_id: int) -> str:
-    return _session_serializer.dumps({"uid": user_id})
+def hash_session_token(token: str) -> str:
+    """SHA-256 of a raw session token — what is stored and looked up."""
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
-def read_session_token(token: str) -> int | None:
-    try:
-        data = _session_serializer.loads(token, max_age=SESSION_MAX_AGE)
-    except (BadSignature, SignatureExpired):
+def _session_cookie_kwargs() -> dict:
+    """Cookie flags — IDENTICAL for set and delete, or the delete does
+    not clear the cookie. In prod the cookie is Secure; a delete sent
+    without Secure cannot remove a Secure cookie in a modern browser,
+    which is how "logged out" users stayed logged in."""
+    return {
+        "path": "/",
+        "httponly": True,
+        "samesite": "lax",
+        "secure": get_settings().environment == "prod",
+    }
+
+
+def set_session_cookie(response, token: str) -> None:
+    response.set_cookie(
+        SESSION_COOKIE, token, max_age=SESSION_MAX_AGE, **_session_cookie_kwargs()
+    )
+
+
+def clear_session_cookie(response) -> None:
+    response.delete_cookie(SESSION_COOKIE, **_session_cookie_kwargs())
+
+
+def _request_context(request: Request) -> tuple[str | None, str | None]:
+    ip = request.client.host if request.client else None
+    ua = request.headers.get("user-agent")
+    return ip, (ua[:255] if ua else None)
+
+
+def create_session(db, user: User, request: Request) -> str:
+    """Create a session row and return the raw token for the cookie."""
+    from datetime import datetime as _dt
+
+    token = secrets.token_urlsafe(32)
+    now = _dt.now(timezone.utc)
+    ip, ua = _request_context(request)
+    db.add(
+        UserSession(
+            token_hash=hash_session_token(token),
+            user_id=user.id,
+            created_at=now,
+            expires_at=now + timedelta(seconds=SESSION_MAX_AGE),
+            last_seen_at=now,
+            ip_address=ip,
+            user_agent=ua,
+        )
+    )
+    db.commit()
+    return token
+
+
+def revoke_session(db, token: str) -> None:
+    """Revoke one session by its raw token (no-op when unknown)."""
+    row = db.query(UserSession).filter(
+        UserSession.token_hash == hash_session_token(token)
+    ).first()
+    if row is not None and row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        db.commit()
+
+
+def revoke_user_sessions(db, user_id: int, except_token: str | None = None) -> int:
+    """Revoke every live session of a user, optionally keeping one
+    (the current browser on a password change / "log out everywhere").
+    Returns how many were revoked."""
+    q = db.query(UserSession).filter(
+        UserSession.user_id == user_id, UserSession.revoked_at.is_(None)
+    )
+    if except_token:
+        q = q.filter(UserSession.token_hash != hash_session_token(except_token))
+    rows = q.all()
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        row.revoked_at = now
+    if rows:
+        db.commit()
+    return len(rows)
+
+
+def load_session_from_cookie(request: Request) -> "UserSession | None":
+    """The live session row for this request's cookie (None when the
+    cookie is missing, unknown, expired or revoked). Refreshes the
+    activity stamp at most once per 5 minutes."""
+    from app.models import UserSession as _UserSession
+
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
         return None
-    uid = data.get("uid") if isinstance(data, dict) else None
-    return int(uid) if uid is not None else None
+    db = SessionLocal()
+    try:
+        row = db.query(_UserSession).filter(
+            _UserSession.token_hash == hash_session_token(token)
+        ).first()
+        if row is None or row.revoked_at is not None:
+            return None
+        now = datetime.now(timezone.utc)
+        expires = row.expires_at
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires is not None and now > expires:
+            return None
+        last_seen = row.last_seen_at
+        if last_seen is not None and last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=timezone.utc)
+        if last_seen is None or (now - last_seen) > timedelta(minutes=5):
+            row.last_seen_at = now
+            db.commit()
+        return row
+    finally:
+        db.close()
 
 
 def load_user_from_cookie(request: Request) -> User | None:
     """Resolve the signed-in user for a request (None if missing, invalid,
-    or banned)."""
-    token = request.cookies.get(SESSION_COOKIE)
-    if not token:
-        return None
-    user_id = read_session_token(token)
-    if user_id is None:
+    expired, revoked, or banned). The user row is re-loaded from the DB
+    on every request, so bans take effect immediately."""
+    session = load_session_from_cookie(request)
+    if session is None:
         return None
     db = SessionLocal()
     try:
-        user = db.get(User, user_id)
+        user = db.get(User, session.user_id)
         if user is None or user.is_banned:
             return None
         return user
     finally:
         db.close()
+
+
+def get_current_session(request: Request) -> "UserSession | None":
+    return getattr(request.state, "session", None)
 
 
 # --- email verification + password-reset tokens (v3.5) ---------------------
@@ -100,8 +218,6 @@ def load_user_from_cookie(request: Request) -> User | None:
 # Verification links live 24h; reset links 1h AND are bound to the
 # current password hash — once the password changes, every older reset
 # link stops working, so a leaked link is single-use in practice.
-
-import hashlib  # noqa: E402
 
 _email_serializer = URLSafeTimedSerializer(settings.secret_key, salt="bytebatallion-email")
 EMAIL_VERIFICATION_MAX_AGE = 24 * 60 * 60  # 24 hours

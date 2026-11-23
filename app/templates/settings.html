@@ -116,6 +116,29 @@
         </form>
       </div>
     </div>
+
+    <!-- Sessions Card (v3.6): a shared computer must never keep the
+         previous user signed in. This kills every other browser/device
+         signed in as you — this browser stays signed in. -->
+    <div class="cyber-card sessions-card">
+      <div class="cyber-card-glitch-border"></div>
+      <div class="card-inner">
+        <div class="card-header-line">
+          <span class="cyber-dot"></span>
+          <h2>Active Sessions</h2>
+        </div>
+        <p class="field-hint">Used a shared or public computer? Sign out everywhere else at once. Your current browser stays signed in.</p>
+        <form method="post" action="/auth/logout-all" class="settings-form">
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <div class="form-actions">
+            <button type="submit" class="cyber-btn primary-btn">
+              <span class="btn-glow"></span>
+              <span class="btn-label">Log out of all other devices</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -19,7 +19,7 @@ Rules:
 """
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import quote
 
@@ -34,18 +34,21 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import User, ctf_state
 from app.security import (
-    SESSION_COOKIE,
-    SESSION_MAX_AGE,
     LoginRateLimiter,
+    clear_session_cookie,
     create_email_verification_token,
     create_password_reset_token,
-    create_session_token,
+    create_session,
+    get_current_session,
     hash_password,
     login_rate_limiter,
     read_email_verification_token,
     read_password_reset_token,
     read_password_reset_uid,
+    revoke_session,
+    revoke_user_sessions,
     safe_next_or,
+    set_session_cookie,
     verify_csrf,
     verify_password,
 )
@@ -85,16 +88,26 @@ def _send_password_reset_email(user: User) -> bool:
     return email_service.send_password_reset_email(user.email, user.username, link)
 
 
-def _set_session_cookie(response: RedirectResponse, user_id: int) -> None:
-    """Signed, HttpOnly, 7-day cookie. `Secure` is enabled in production."""
-    response.set_cookie(
-        SESSION_COOKIE,
-        create_session_token(user_id),
-        max_age=SESSION_MAX_AGE,
-        httponly=True,
-        samesite="lax",
-        secure=get_settings().environment == "prod",
-    )
+def _set_session_cookie(
+    response: RedirectResponse, request: Request, db: Session, user: User,
+) -> None:
+    """Issue a FRESH server-side session (v3.6) and set its cookie.
+
+    If this browser was presenting a session — for the same user or a
+    DIFFERENT one — that session is revoked first. That is the
+    shared-browser fix: logging in as B on a computer where A was
+    logged in kills A's session there, so A can never "come back" when
+    B logs out or the page is re-opened. It also rotates the token on
+    every login, so a token fixed before login is worthless after it.
+    """
+    current = get_current_session(request)
+    if current is not None:
+        current = db.get(type(current), current.id)
+        if current is not None and current.revoked_at is None:
+            current.revoked_at = datetime.now(timezone.utc)
+            db.commit()
+    token = create_session(db, user, request)
+    set_session_cookie(response, token)
 
 
 def _find_user(db: Session, login: str) -> User | None:
@@ -196,7 +209,7 @@ def register_submit(
     db.add(user)
     db.commit()
     response = RedirectResponse(safe_next_or(request, "/challenges", next), status_code=303)
-    _set_session_cookie(response, user.id)
+    _set_session_cookie(response, request, db, user)
     return response
 
 
@@ -257,7 +270,7 @@ def login_submit(
                 "verification link, or use 'Resend verification email' below.")
         login_rate_limiter.reset(key)
         response = RedirectResponse(safe_next_or(request, "/challenges", next), status_code=303)
-        _set_session_cookie(response, user.id)
+        _set_session_cookie(response, request, db, user)
         return response
 
     login_rate_limiter.record_failure(key)
@@ -265,10 +278,43 @@ def login_submit(
 
 
 @router.post("/logout")
-def logout(_: None = Depends(verify_csrf)):
+def logout(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+):
+    """Log out THIS browser: revoke its session server-side AND clear
+    the cookie with the same flags it was set with (path, HttpOnly,
+    SameSite, Secure-in-prod) — either half alone leaves the old
+    session usable, which was the bug."""
+    current = get_current_session(request)
+    if current is not None:
+        revoke_session(db, request.cookies.get("session", "") or "")
     response = RedirectResponse("/", status_code=303)
-    response.delete_cookie(SESSION_COOKIE)
+    clear_session_cookie(response)
     return response
+
+
+@router.post("/logout-all")
+def logout_all(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(verify_csrf),
+):
+    """"Log out of all other devices" — revoke every session of this
+    user except the one this browser is using (Settings page)."""
+    from app.security import require_user
+
+    user = require_user(request)
+    current = get_current_session(request)
+    token = request.cookies.get("session", "") if current is not None else None
+    revoke_user_sessions(db, user.id, except_token=token)
+    return RedirectResponse(
+        "/settings?msg=" + quote(
+            "Logged out of all other devices — this browser stays signed in.",
+            safe=""),
+        status_code=303,
+    )
 
 
 # --- email verification (v3.5) ----------------------------------------------
@@ -299,7 +345,7 @@ def verify_email(request: Request, token: str = "", db: Session = Depends(get_db
     user.is_verified = True
     db.commit()
     response = RedirectResponse("/challenges", status_code=303)
-    _set_session_cookie(response, user.id)
+    _set_session_cookie(response, request, db, user)
     return response
 
 
@@ -425,6 +471,9 @@ def reset_password_submit(
         return _error_redirect("The two passwords do not match.")
     user.password_hash = hash_password(password)
     db.commit()
+    # v3.6: a password reset kills every live session — a stolen
+    # session cookie must not survive the password being changed.
+    revoke_user_sessions(db, user.id)
     return RedirectResponse(
         "/auth/login?msg=" + quote(
             "Password updated — log in with your new password.", safe="")
