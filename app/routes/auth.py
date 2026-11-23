@@ -14,8 +14,10 @@ Rules:
   behaviour (usable immediately) so a missing key can never brick
   signup — the live site always has the key set, so this only bites
   in dev/test, where the whole old test suite relies on it
-- forgot-password / resend-verification never reveal whether an email
-  is registered (same message either way)
+- forgot-password / resend-verification never reveal whether an account
+  exists for the given username or email (same message either way)
+- forgot-password accepts a username OR an email (v3.7); the reset mail
+  always goes to that account's registered email address
 """
 
 import re
@@ -395,27 +397,31 @@ def forgot_password_page(request: Request):
     return templates.TemplateResponse(
         request=request, name="auth/forgot_password.html",
         context={"msg": msg or None,
-                 "email": request.query_params.get("email", "")},
+                 "value": request.query_params.get("value", "")},
     )
 
 
 @router.post("/forgot-password")
 def forgot_password_submit(
     request: Request,
-    email: str = Form(""),
+    login: str = Form(""),
     db: Session = Depends(get_db),
     _: None = Depends(verify_csrf),
 ):
-    email = email.strip().lower()
+    # v3.7: the box accepts a username OR an email. The reset mail always
+    # goes to the matched account's registered email address — the value
+    # typed here is only a lookup key, never the recipient.
+    login = login.strip()
     ip = request.client.host if request.client else "unknown"
-    key = f"{ip}|{email}"
+    key = f"{ip}|{login.lower()}"
     # Same message whether the account exists or not — never reveal it.
     done_url = ("/auth/forgot-password?msg=" + quote(
-        "If an account exists for that email, a password reset link has "
-        "been sent (valid for 1 hour).", safe="")
-        + "&email=" + quote(email, safe=""))
-    if email and not email_request_limiter.is_locked(key):
-        user = db.query(User).filter(func.lower(User.email) == email).first()
+        "If an account exists for that username or email, a password "
+        "reset link has been sent to its registered email address "
+        "(valid for 1 hour).", safe="")
+        + "&value=" + quote(login, safe=""))
+    if login and not email_request_limiter.is_locked(key):
+        user = _find_user(db, login)
         if user is not None:
             _send_password_reset_email(user)
             email_request_limiter.record_failure(key)

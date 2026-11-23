@@ -259,7 +259,7 @@ def test_password_reset_kills_all_sessions(_isolate):
     anon = TestClient(app)
     r = anon.post(
         "/auth/forgot-password",
-        data={"csrf_token": get_csrf(anon), "email": f"{user}@example.com"},
+        data={"csrf_token": get_csrf(anon), "login": f"{user}@example.com"},
         follow_redirects=False,
     )
     assert r.status_code == 303

@@ -184,7 +184,7 @@ def test_forgot_password_resets_and_old_link_dies(client, _isolate_email_state):
 
     r = client.post(
         "/auth/forgot-password",
-        data={"csrf_token": get_csrf(client), "email": "carol@example.com"},
+        data={"csrf_token": get_csrf(client), "login": "carol@example.com"},
         follow_redirects=False,
     )
     assert r.status_code == 303
@@ -225,11 +225,32 @@ def test_forgot_password_resets_and_old_link_dies(client, _isolate_email_state):
     assert login(client, "carol", "password123").headers["location"].startswith("/auth/login?error=")
 
 
+def test_forgot_password_by_username_sends_to_registered_email(client, _isolate_email_state):
+    """v3.7: a username in the box mails the reset link to that account's
+    registered email address — the typed value is only a lookup key."""
+    outbox = _isolate_email_state
+    register(client, "diana", email="diana.real@example.com")
+    _set_verified("diana")
+
+    r = client.post(
+        "/auth/forgot-password",
+        data={"csrf_token": get_csrf(client), "login": "diana"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    assert "msg=" in r.headers["location"]
+    assert len(outbox) == 2  # verification mail + reset mail
+    to, subject, _html = outbox[1][0]
+    assert to == "diana.real@example.com"  # the REGISTERED address, not the input
+    assert subject == "Reset your ByteBatallion password"
+    assert "/auth/reset-password?token=" in _mail_link(outbox, 1)
+
+
 def test_forgot_password_unknown_email_is_generic(client, _isolate_email_state):
     outbox = _isolate_email_state
     r = client.post(
         "/auth/forgot-password",
-        data={"csrf_token": get_csrf(client), "email": "ghost@example.com"},
+        data={"csrf_token": get_csrf(client), "login": "ghost@example.com"},
         follow_redirects=False,
     )
     assert r.status_code == 303
